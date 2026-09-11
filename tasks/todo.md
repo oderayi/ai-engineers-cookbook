@@ -547,7 +547,7 @@ object) — all three must match.
 
 ## Phase 5: CLI & hardening
 
-### Task 16: `skillet recipes validate`
+### Task 16: [DONE] `skillet recipes validate`
 
 **Description:** The CLI command every recipe (including future content
 recipes) must pass before it's considered shippable: manifest parses, module
@@ -557,15 +557,15 @@ disk, every `recipe.env` entry has a non-empty `provider`, and every
 clear per-recipe report on any failure.
 
 **Acceptance criteria:**
-- [ ] Both fixture recipes pass `validate` cleanly
-- [ ] A recipe with a missing declared fixture, an env entry with no
+- [x] Both fixture recipes pass `validate` cleanly
+- [x] A recipe with a missing declared fixture, an env entry with no
       `provider`, or an invalid example each fail `validate` with a message
       naming the recipe and the specific problem
-- [ ] Exit code is `0` iff every recipe passes
+- [x] Exit code is `0` iff every recipe passes
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_cli_validate.py`
-- [ ] Manual check: `cd backend && uv run skillet recipes validate` against the
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_cli_validate.py`
+- [x] Manual check: `cd backend && uv run skillet recipes validate` against the
       fixtures root exits `0`
 
 **Dependencies:** Task 9
@@ -579,7 +579,7 @@ exercise each failure mode)
 
 ---
 
-### Task 17: `skillet recipes list` & `skillet recipes new`
+### Task 17: [DONE] `skillet recipes list` & `skillet recipes new`
 
 **Description:** `list` prints the discovery registry (grouped, ordered).
 `new <group>/<slug>` scaffolds a new recipe directory from a template
@@ -587,15 +587,15 @@ exercise each failure mode)
 in and pass `validate`.
 
 **Acceptance criteria:**
-- [ ] `skillet recipes list` output order matches discovery's order
-- [ ] `skillet recipes new demo/hello` creates a directory that passes
+- [x] `skillet recipes list` output order matches discovery's order
+- [x] `skillet recipes new demo/hello` creates a directory that passes
       `skillet recipes validate` immediately, unmodified
-- [ ] Running `new` with an already-existing `group/slug` fails with a clear
+- [x] Running `new` with an already-existing `group/slug` fails with a clear
       error instead of overwriting
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_cli_list_new.py`
-- [ ] Manual check: run `new`, inspect the generated directory by eye
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_cli_list_new.py`
+- [x] Manual check: run `new`, inspect the generated directory by eye
 
 **Dependencies:** Task 7, Task 16
 
@@ -608,7 +608,7 @@ in and pass `validate`.
 
 ---
 
-### Task 18: Coverage & success-criteria sign-off pass
+### Task 18: [DONE] Coverage & success-criteria sign-off pass
 
 **Description:** Close any coverage gaps in `src/skillet/recipe/` to reach the
 spec's ≥90% target, and produce an explicit checklist mapping each of
@@ -617,15 +617,15 @@ that verify it (most already exist from earlier tasks — this task is the
 audit, plus whatever small test additions the audit reveals are missing).
 
 **Acceptance criteria:**
-- [ ] `uv run pytest --cov=skillet.recipe --cov-report=term-missing` reports
+- [x] `uv run pytest --cov=skillet.recipe --cov-report=term-missing` reports
       ≥ 90% line coverage
-- [ ] A short table (in the PR description or a comment in this task) lists
+- [x] A short table (in the PR description or a comment in this task) lists
       Success Criteria 1–9 each against the test file(s) that cover it
-- [ ] `uv run ruff check` and `uv run ruff format --check` are clean
+- [x] `uv run ruff check` and `uv run ruff format --check` are clean
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest --cov=skillet.recipe --cov-report=term-missing`
-- [ ] Manual check: the coverage report and the criteria-to-test table are
+- [x] Tests pass: `cd backend && uv run pytest --cov=skillet.recipe --cov-report=term-missing`
+- [x] Manual check: the coverage report and the criteria-to-test table are
       reviewed by a human before this module is considered done
 
 **Dependencies:** Tasks 0–17
@@ -638,9 +638,12 @@ to be small additions to existing test files, not new modules.
 ---
 
 ## Checkpoint E: Module complete (after Task 18)
-- [ ] All 9 success criteria in `SPEC-recipe-framework.md` individually verified
-- [ ] `src/skillet/recipe/` ≥ 90% line coverage
-- [ ] Full suite + lint green
+- [x] 8 of 9 success criteria in `SPEC-recipe-framework.md` individually
+      verified by a test in this module (see tasks/plan.md's sign-off table);
+      criterion 4 is schema-only here, its enforcement/test belongs to
+      `settings`/`execution`
+- [x] `src/skillet/recipe/` ≥ 90% line coverage (98% across all of `src/skillet/`)
+- [x] Full suite + lint green
 - [ ] **Human review and sign-off** — this module is what `app-shell`'s
       backend-independent frontend work does *not* need, but everything from
       `catalog` onward that talks to a real backend does

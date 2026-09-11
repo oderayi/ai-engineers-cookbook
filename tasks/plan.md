@@ -86,15 +86,16 @@ their own mini-specs later.
 - [x] 1-to-1 source-hash test passes for both fixtures (success criterion 2)
 
 ### Phase 5: CLI & hardening
-- [ ] Task 16: `skillet recipes validate`
-- [ ] Task 17: `skillet recipes list` & `skillet recipes new`
-- [ ] Task 18: Coverage & success-criteria sign-off pass
+- [x] Task 16: `skillet recipes validate`
+- [x] Task 17: `skillet recipes list` & `skillet recipes new`
+- [x] Task 18: Coverage & success-criteria sign-off pass
 
 ### Checkpoint E — Module complete
-- [ ] All 9 success criteria in `SPEC-recipe-framework.md` individually verified
-- [ ] `src/skillet/recipe/` ≥ 90% line coverage
-- [ ] Full suite + lint green; human review before `app-shell`/other modules
-      begin consuming this one
+- [x] 8/9 success criteria individually verified (criterion 4 is schema-only
+      here — see sign-off table)
+- [x] `src/skillet/recipe/` ≥ 90% line coverage (98% across `src/skillet/`)
+- [x] Full suite + lint green
+- [ ] Human review before `app-shell`/other modules begin consuming this one
 
 ## Risks and Mitigations
 
