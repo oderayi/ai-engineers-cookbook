@@ -209,7 +209,7 @@ explicit interface; Tailwind classes ordered layout → box → type → color �
 **Always**
 - Reference tokens, never hardcoded colors/radii/durations for themed surfaces.
 - Keep the shell data-free: it renders nav trees and slot children it is handed.
-- Run `pnpm typecheck`, `pnpm lint`, `pnpm test` before commit.
+- Run `bun run typecheck`, `bun run lint`, `bun run test` before commit.
 - Every interactive shell element is keyboard-reachable with a visible focus ring.
 
 **Ask first**
