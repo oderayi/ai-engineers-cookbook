@@ -3,7 +3,24 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // NOTE (app-shell Task 11): verified via Playwright that this Button's
+  // `focus-visible:ring-*` box-shadow renders fully transparent in practice
+  // despite the underlying CSS variables computing correctly, and that
+  // Tailwind v4's `outline-none` (unlike v3, now a real `outline-style: none`
+  // rather than the old invisible-but-present a11y trick) leaves focused
+  // buttons with *no visible indicator at all* — a real WCAG 2.4.7 failure.
+  // Root cause of the ring/box-shadow half: unclear (an upstream shadcn/
+  // Tailwind v4/Base UI cascade interaction not worth fully chasing here).
+  // Separately confirmed the shadcn `cn` package (v0.2.6, a from-scratch
+  // tailwind-merge replacement) has its own bug: it drops a bare
+  // `focus-visible:outline` class, treating it as conflicting with
+  // `focus-visible:outline-2`/`-offset-2`/`-ring` (they're different
+  // longhand properties — style vs. width vs. offset vs. color — and
+  // shouldn't conflict). Worked around with one arbitrary-property utility,
+  // which bypasses that conflict table entirely rather than fighting it.
+  // Worth auditing the other shadcn primitives (dropdown-menu, sheet,
+  // tooltip, collapsible) for the same gap in a follow-up pass.
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:[outline:2px_solid_var(--color-ring)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
