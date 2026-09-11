@@ -1,0 +1,45 @@
+[project]
+name = "skillet"
+version = "0.1.0"
+description = "Skillet — the AI engineer's cookbook. Recipe framework and backend."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "sse-starlette>=2.1",
+]
+
+# [project.scripts] (skillet = "skillet.cli:app") is added in Task 16/17 once
+# src/skillet/cli.py exists — not needed for the Task 0 scaffold.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/skillet"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.coverage.run]
+source = ["src/skillet"]
