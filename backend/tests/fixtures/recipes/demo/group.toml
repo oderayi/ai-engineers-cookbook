@@ -1,0 +1,5 @@
+[group]
+id = "demo"
+title = "Demo"
+order = 1
+summary = "Framework smoke-test recipes."
