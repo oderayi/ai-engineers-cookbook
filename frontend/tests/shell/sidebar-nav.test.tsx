@@ -110,4 +110,45 @@ describe("SidebarNav", () => {
       expect(link).toHaveFocus();
     }
   });
+
+  describe("collapsed (icon-only) mode", () => {
+    // Recipes have no icon of their own (only groups do), so icon-only mode
+    // shows a compact strip of group icons/initials rather than fabricating
+    // a per-recipe icon that doesn't exist in the data model. Introduced for
+    // Task 8 (Sidebar)'s collapse-to-icons behavior.
+
+    it("hides recipe titles and difficulty/progress badges when collapsed", () => {
+      render(<SidebarNav nav={navTreeFixture} collapsed />);
+
+      const allRecipes = navTreeFixture.groups.flatMap((g) => g.recipes);
+      for (const recipe of allRecipes) {
+        expect(screen.queryByText(recipe.title)).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId(`nav-difficulty-${recipe.slug}`)
+        ).not.toBeInTheDocument();
+      }
+    });
+
+    it("still shows one entry per group, each labeled for accessibility", () => {
+      render(<SidebarNav nav={navTreeFixture} collapsed />);
+
+      for (const group of navTreeFixture.groups) {
+        expect(
+          screen.getByRole("button", { name: group.title })
+        ).toBeInTheDocument();
+      }
+    });
+
+    it("falls back to a generic icon for a group with no named icon", () => {
+      render(<SidebarNav nav={navTreeFixture} collapsed />);
+
+      const groupWithoutIcon = navTreeFixture.groups.find((g) => !g.icon);
+      expect(groupWithoutIcon).toBeDefined();
+      // still renders as a real, accessibly-named control even without a
+      // recognized icon — never an empty/broken entry.
+      expect(
+        screen.getByRole("button", { name: groupWithoutIcon!.title })
+      ).toBeInTheDocument();
+    });
+  });
 });

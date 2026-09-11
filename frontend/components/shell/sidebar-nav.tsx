@@ -1,5 +1,17 @@
-import { BookOpen, CheckCircle2, Circle, Database, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle2,
+  Circle,
+  Database,
+  Folder,
+  type LucideIcon,
+} from "lucide-react";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
 
 /**
@@ -34,6 +46,14 @@ export interface NavModel {
 
 export interface SidebarNavProps {
   nav: NavModel;
+  /**
+   * Icon-only mode (Task 8's collapse-to-icons). Recipes have no icon of
+   * their own — only groups do — so this doesn't try to fabricate one:
+   * collapsed mode shows one compact, tooltipped entry per group (its icon,
+   * or a generic fallback) and omits the recipe list entirely, rather than
+   * rendering a misleading partial nav.
+   */
+  collapsed?: boolean;
   className?: string;
 }
 
@@ -66,7 +86,42 @@ const DIFFICULTY_LABEL: Record<NavRecipe["difficulty"], string> = {
  * correct browser affordances (open-in-new-tab, status-bar preview, etc.)
  * without pretending to navigate anywhere client-side-only.
  */
-export function SidebarNav({ nav, className }: SidebarNavProps) {
+export function SidebarNav({ nav, collapsed = false, className }: SidebarNavProps) {
+  if (collapsed) {
+    return (
+      <nav
+        aria-label="Recipe navigation, collapsed"
+        className={cn("flex flex-col items-center gap-1", className)}
+      >
+        {nav.groups.map((group) => {
+          const GroupIcon = (group.icon ? GROUP_ICONS[group.icon] : undefined) ?? Folder;
+          return (
+            <Tooltip key={group.id}>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={group.title}
+                    data-testid={`nav-group-collapsed-${group.id}`}
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-md text-sidebar-foreground/70",
+                      "outline-none transition-colors",
+                      "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      "focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+                    )}
+                  />
+                }
+              >
+                <GroupIcon aria-hidden="true" className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent side="right">{group.title}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
     <nav aria-label="Recipe navigation" className={cn("flex flex-col gap-4", className)}>
       {nav.groups.map((group) => {
