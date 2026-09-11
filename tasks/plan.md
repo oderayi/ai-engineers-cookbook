@@ -105,6 +105,29 @@ their own mini-specs later.
 | Output-byte cap miscounts (e.g. counts pre-serialization size, or double-counts) | Low–Medium — cap either never trips or trips too early | Measure `len(event.model_dump_json().encode())` cumulatively, tested with an event stream engineered to land exactly at and one byte over the cap |
 | `GET /recipes/{slug}` needs a lazy import (for `input_schema`) that could accidentally leak into `GET /recipes`' import-free guarantee if code is shared carelessly | Medium — silently violates success criterion 8 | Task 12's test (import patched to raise) runs against `GET /recipes` specifically and stays in the suite permanently, not just during Task 12 |
 
+## Success-criteria sign-off (Task 18)
+
+Every numbered Success Criterion in `SPEC-recipe-framework.md`, mapped to the
+test(s) that verify it. Module complete: 118/118 tests pass, 98% coverage
+across `src/skillet/` (each `recipe/` file individually ≥ 93%, comfortably
+over the 90% target), `ruff check` clean.
+
+| # | Criterion | Verified by |
+|---|---|---|
+| 1 | `skillet recipes validate` passes for all bundled recipes | `test_cli_validate.py::test_both_fixture_recipes_pass` (+ CI running the full suite) |
+| 2 | Served source bytes == executor-imported bytes (SHA-256) | `test_source_mapping.py` (both tests — byte comparison **and** a corrupt-then-recheck case) |
+| 3 | An invalid `Params` value is rejected before any recipe code runs | `test_params.py::test_constraint_violation_rejected`, `test_missing_required_field_rejected`, `test_params_forbids_undeclared_fields` — validation happens at `Params` construction, which is always before `execute()` is ever called |
+| 4 | An override for an undeclared env key is rejected | **Not implemented or tested in this module.** `recipe-framework` only defines the `recipe.env` schema (Confirmed Decision/Boundary: "enforced by `settings` + the run endpoint"). This criterion's actual test belongs to `settings`'/`execution`'s own task lists — flagging here so it isn't assumed covered. |
+| 5 | Timeout → exactly one `error(timeout)` | `test_executor_run.py::test_timeout_yields_single_terminal_error` |
+| 6 | Events arrive in emitted order, terminated by exactly one result/error | `test_executor_run.py` (all cases assert this); `test_events.py` for the wire shape itself |
+| 7 | A new recipe needs zero `src/skillet/` changes | `test_isolation_swap.py` |
+| 8 | `GET /recipes` never imports recipe Python | `test_api_recipes_list.py::test_list_recipes_never_imports_recipe_python` |
+| 9 | `GET /recipes/{slug}` returns `inputSchema`/`sourceFiles`/`env`/`examples`/`readmeMarkdown`, examples validated | `test_api_recipe_detail.py` (schema match, source files + env, README present/absent, invalid-example → 500, broken-module → 500) |
+
+**Action item surfaced by this table:** criterion 4 needs a real test once
+`settings`/`execution` are implemented — noting it now so it isn't silently
+dropped.
+
 ## Open Questions
 
 Carried from the spec, not blocking for these tasks (they affect *content*

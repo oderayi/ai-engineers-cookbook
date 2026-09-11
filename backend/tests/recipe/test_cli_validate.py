@@ -111,3 +111,30 @@ def test_broken_recipe_module_fails(tmp_path: Path, capsys) -> None:
 def test_via_main_entrypoint(capsys) -> None:
     exit_code = main(["recipes", "validate", "--root", str(FIXTURES_ROOT)])
     assert exit_code == 0
+
+
+def test_nonexistent_root_fails_clearly(tmp_path: Path, capsys) -> None:
+    exit_code = cmd_validate(tmp_path / "does-not-exist")
+    err = capsys.readouterr().err
+    assert exit_code == 1
+    assert "no such recipes root" in err
+
+
+def test_discovery_error_fails_clearly(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "recipes"
+    write(root / "g" / "group.toml", '[group]\nid = "g"\ntitle = "G"\norder = 1\n')
+    write(
+        root / "g" / "10-dup" / "recipe.toml",
+        '[recipe]\nslug = "dup"\ntitle = "A"\nsummary = "..."\ndifficulty = "basic"\n'
+        "order = 10\nestimated_runtime_seconds = 1\n",
+    )
+    write(
+        root / "g" / "20-dup" / "recipe.toml",
+        '[recipe]\nslug = "dup"\ntitle = "B"\nsummary = "..."\ndifficulty = "basic"\n'
+        "order = 20\nestimated_runtime_seconds = 1\n",
+    )
+
+    exit_code = cmd_validate(root)
+    err = capsys.readouterr().err
+    assert exit_code == 1
+    assert "discovery failed" in err

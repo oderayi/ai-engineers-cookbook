@@ -1,8 +1,11 @@
 """Tests for `skillet recipes list` and `skillet recipes new`."""
 
+import sys
 from pathlib import Path
 
-from skillet.cli import cmd_list, cmd_new, cmd_validate
+import pytest
+
+from skillet.cli import app, cmd_list, cmd_new, cmd_validate, main
 
 FIXTURES_ROOT = Path(__file__).parent.parent / "fixtures" / "recipes"
 
@@ -54,3 +57,31 @@ def test_new_does_not_overwrite_existing_recipe(tmp_path: Path, capsys) -> None:
     assert exit_code == 1
     assert "already exists" in err
     assert (root / "demo" / "10-hello" / "recipe.py").read_text() == original
+
+
+def test_list_nonexistent_root_fails_clearly(tmp_path: Path, capsys) -> None:
+    exit_code = cmd_list(tmp_path / "does-not-exist")
+    err = capsys.readouterr().err
+    assert exit_code == 1
+    assert "no such recipes root" in err
+
+
+def test_new_without_slash_fails_clearly(tmp_path: Path, capsys) -> None:
+    exit_code = cmd_new(tmp_path, "no-slash-here")
+    err = capsys.readouterr().err
+    assert exit_code == 1
+    assert "usage" in err
+
+
+def test_list_and_new_via_main_entrypoint(tmp_path: Path, capsys) -> None:
+    assert main(["recipes", "list", "--root", str(FIXTURES_ROOT)]) == 0
+    assert main(["recipes", "new", "demo/hello", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+
+
+def test_app_entrypoint_exits_with_main_return_code(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["skillet", "recipes", "list", "--root", str(FIXTURES_ROOT)])
+    with pytest.raises(SystemExit) as exc_info:
+        app()
+    capsys.readouterr()
+    assert exc_info.value.code == 0

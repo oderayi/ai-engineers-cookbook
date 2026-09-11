@@ -65,6 +65,22 @@ def test_detail_readme_markdown_present_when_file_exists(tmp_path: Path) -> None
     assert resp.json()["readmeMarkdown"] == "# Hello\n\nLong-form explanation.\n"
 
 
+def test_detail_broken_recipe_module_is_500(tmp_path: Path) -> None:
+    """Discoverable (valid manifest) but the module itself fails to import —
+    distinct from the invalid-example case below."""
+    root = tmp_path / "recipes"
+    write(root / "g" / "group.toml", '[group]\nid = "g"\ntitle = "G"\norder = 1\n')
+    write(
+        root / "g" / "10-x" / "recipe.toml",
+        '[recipe]\nslug = "x"\ntitle = "X"\nsummary = "..."\ndifficulty = "basic"\n'
+        "order = 10\nestimated_runtime_seconds = 1\n",
+    )
+    write(root / "g" / "10-x" / "recipe.py", "def broken(:\n")  # syntax error
+
+    resp = make_client(root).get("/recipes/x")
+    assert resp.status_code == 500
+
+
 def test_detail_unknown_slug_is_404() -> None:
     resp = make_client().get("/recipes/does-not-exist")
     assert resp.status_code == 404
