@@ -289,7 +289,7 @@ plugin wired into `next.config.ts`, and a minimal icon set.
 
 ## Phase 2: Composition (sequential)
 
-### Task 8: `sidebar.tsx`
+### Task 8: [DONE] `sidebar.tsx`
 
 **Description:** Composes `sidebar-nav.tsx` (Task 5) + `theme-toggle.tsx`
 (Task 4) + `mobile-drawer.tsx` (Task 6) into the full sidebar: collapse-to-icons
@@ -297,15 +297,15 @@ state (persisted), a subtle background tint, and the footer housing the theme
 toggle.
 
 **Acceptance criteria:**
-- [ ] Collapse toggle switches between full nav and icon-only, persists the
+- [x] Collapse toggle switches between full nav and icon-only, persists the
       choice across reload (localStorage — a simple boolean is fine, no
       Zod/versioning needed for this alone)
-- [ ] Footer contains the theme toggle
-- [ ] Under `md`, renders via `mobile-drawer.tsx` instead of the persistent rail
+- [x] Footer contains the theme toggle
+- [x] Under `md`, renders via `mobile-drawer.tsx` instead of the persistent rail
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test sidebar.test`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test sidebar.test`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 4, 5, 6
 
@@ -317,21 +317,21 @@ toggle.
 
 ---
 
-### Task 9: `shell.tsx`
+### Task 9: [DONE] `shell.tsx`
 
 **Description:** The grid composition from the spec's code sample — sidebar
 on the left, topbar + scrollable main on the right, content max-width applied
 in main.
 
 **Acceptance criteria:**
-- [ ] Matches the spec's `Shell({ nav, tabs, children })` signature
-- [ ] Renders `nav` into `Sidebar`, `tabs` into `Topbar`, `children` into the
+- [x] Matches the spec's `Shell({ nav, tabs, children })` signature
+- [x] Renders `nav` into `Sidebar`, `tabs` into `Topbar`, `children` into the
       max-width-constrained main slot
-- [ ] Grid collapses to a single column under `md` (sidebar becomes the drawer)
+- [x] Grid collapses to a single column under `md` (sidebar becomes the drawer)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test shell.test`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test shell.test`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 8
 

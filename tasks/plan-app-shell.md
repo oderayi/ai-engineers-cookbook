@@ -90,8 +90,8 @@ Serwist's generated bundle was being linted as source (85 false-positive
 warnings) and was about to be committed as a build artifact.
 
 ### Phase 2: Composition (sequential — depends on Phase 1)
-- [ ] Task 8: `sidebar.tsx` (composes nav + theme-toggle + drawer, collapse state)
-- [ ] Task 9: `shell.tsx` (composes Sidebar + Topbar + main slot)
+- [x] Task 8: `sidebar.tsx` (composes nav + theme-toggle + drawer, collapse state)
+- [x] Task 9: `shell.tsx` (composes Sidebar + Topbar + main slot)
 
 ### Phase 3: Wiring (sequential)
 - [ ] Task 10: `app/layout.tsx` + `app/page.tsx` against fixture data
