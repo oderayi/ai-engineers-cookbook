@@ -50,7 +50,7 @@ class Registry:
         return self._by_slug.get(slug)
 
 
-def _recipe_slug_from_dir_name(dir_name: str) -> str | None:
+def recipe_slug_from_dir_name(dir_name: str) -> str | None:
     """`10-rag-basics` -> `rag-basics`; returns None if there's no NN- prefix."""
     match = _RECIPE_DIR_RE.match(dir_name)
     return match.group(1) if match else None
@@ -84,7 +84,7 @@ def discover(recipes_root: Path) -> Registry:
 
             manifest = parse_recipe_toml(recipe_toml)
 
-            dir_slug = _recipe_slug_from_dir_name(recipe_dir.name)
+            dir_slug = recipe_slug_from_dir_name(recipe_dir.name)
             if dir_slug is None:
                 raise DiscoveryError(
                     f"{recipe_dir}: directory name must be prefixed <NN>-<slug>, "

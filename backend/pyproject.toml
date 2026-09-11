@@ -11,8 +11,8 @@ dependencies = [
     "sse-starlette>=2.1",
 ]
 
-# [project.scripts] (skillet = "skillet.cli:app") is added in Task 16/17 once
-# src/skillet/cli.py exists — not needed for the Task 0 scaffold.
+[project.scripts]
+skillet = "skillet.cli:app"
 
 [build-system]
 requires = ["hatchling"]
