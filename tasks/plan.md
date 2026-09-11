@@ -41,19 +41,19 @@ their own mini-specs later.
 ## Task List
 
 ### Phase 0: Scaffold
-- [ ] Task 0: Repo & backend package scaffold
+- [x] Task 0: Repo & backend package scaffold
 
 ### Phase 1: Foundations (manifest, params, events, context)
-- [ ] Task 1: Manifest schema & TOML parsing
-- [ ] Task 2: Params base & UploadedFile field
-- [ ] Task 3: Fixture recipes (`echo`, `echo-with-helper`)
-- [ ] Task 4: Event models & SSE serialization
-- [ ] Task 5: Emitter
-- [ ] Task 6: RecipeContext & FileBundle
+- [x] Task 1: Manifest schema & TOML parsing
+- [x] Task 2: Params base & UploadedFile field
+- [x] Task 3: Fixture recipes (`echo`, `echo-with-helper`)
+- [x] Task 4: Event models & SSE serialization
+- [x] Task 5: Emitter
+- [x] Task 6: RecipeContext & FileBundle
 
 ### Checkpoint A — Foundations
-- [ ] `uv run pytest` green, `uv run ruff check` clean
-- [ ] No integration yet — every task above is unit-tested in isolation
+- [x] `uv run pytest` green (50/50), `uv run ruff check` clean
+- [x] No integration yet — every task above is unit-tested in isolation
 - [ ] Human review before Phase 2
 
 ### Phase 2: Discovery & source

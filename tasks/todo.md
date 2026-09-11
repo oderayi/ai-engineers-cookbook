@@ -6,22 +6,22 @@ Plan: [tasks/plan.md](plan.md). Spec: [docs/SPEC-recipe-framework.md](../docs/SP
 
 ## Phase 0: Scaffold
 
-### Task 0: Repo & backend package scaffold
+### Task 0: [DONE] Repo & backend package scaffold
 
 **Description:** Initialize version control and the `backend/` Python package
 skeleton so every later task has somewhere to land.
 
 **Acceptance criteria:**
-- [ ] `git init` done, `.gitignore` covers Python/Node artifacts and `.env` files
-- [ ] `backend/pyproject.toml` declares the package, Python `>=3.12`, `uv` as the
+- [x] `git init` done, `.gitignore` covers Python/Node artifacts and `.env` files
+- [x] `backend/pyproject.toml` declares the package, Python `>=3.12`, `uv` as the
       manager, `ruff` + `pytest` + `pytest-asyncio` + `pytest-cov` as dev deps
-- [ ] `backend/src/skillet/__init__.py` and `backend/src/skillet/recipe/__init__.py`
+- [x] `backend/src/skillet/__init__.py` and `backend/src/skillet/recipe/__init__.py`
       exist (empty package markers)
 
 **Verification:**
-- [ ] `cd backend && uv sync` succeeds
-- [ ] `cd backend && uv run python -c "import skillet.recipe"` succeeds
-- [ ] `git status` shows a clean initial commit
+- [x] `cd backend && uv sync` succeeds
+- [x] `cd backend && uv run python -c "import skillet.recipe"` succeeds
+- [x] `git status` shows a clean initial commit
 
 **Dependencies:** None
 
@@ -37,7 +37,7 @@ skeleton so every later task has somewhere to land.
 
 ## Phase 1: Foundations
 
-### Task 1: Manifest schema & TOML parsing
+### Task 1: [DONE] Manifest schema & TOML parsing
 
 **Description:** `RecipeManifest` and `GroupManifest` Pydantic models covering
 every field in the spec's `recipe.toml` / `group.toml` examples (including
@@ -46,16 +46,16 @@ every field in the spec's `recipe.toml` / `group.toml` examples (including
 typed error on malformed or missing-required-field input.
 
 **Acceptance criteria:**
-- [ ] Both example manifests from `SPEC-recipe-framework.md` parse into the
+- [x] Both example manifests from `SPEC-recipe-framework.md` parse into the
       models without modification
-- [ ] A `recipe.toml` missing a required field (e.g. `slug`) raises a typed
+- [x] A `recipe.toml` missing a required field (e.g. `slug`) raises a typed
       `ManifestError` naming the missing field, not a raw Pydantic traceback
-- [ ] `RecipeManifest.example[].params` is stored as a plain dict (validated
+- [x] `RecipeManifest.example[].params` is stored as a plain dict (validated
       against `Params` later, in Task 13) — this task does not do that validation
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_manifest.py`
-- [ ] Build succeeds: `cd backend && uv run ruff check src/skillet/recipe/manifest.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_manifest.py`
+- [x] Build succeeds: `cd backend && uv run ruff check src/skillet/recipe/manifest.py`
 
 **Dependencies:** Task 0
 
@@ -67,7 +67,7 @@ typed error on malformed or missing-required-field input.
 
 ---
 
-### Task 2: Params base & `UploadedFile` field
+### Task 2: [DONE] Params base & `UploadedFile` field
 
 **Description:** The `Params` base class every recipe's input model subclasses,
 and an `UploadedFile` type usable as a `list[UploadedFile]` field that carries
@@ -75,16 +75,16 @@ and an `UploadedFile` type usable as a `list[UploadedFile]` field that carries
 compiler (a different module, already spec'd) can read them later.
 
 **Acceptance criteria:**
-- [ ] A subclass of `Params` with a mix of `str`, `int` (with `ge`/`le`), `bool`,
+- [x] A subclass of `Params` with a mix of `str`, `int` (with `ge`/`le`), `bool`,
       and `list[UploadedFile]` fields produces the JSON Schema shape the
       `catalog` spec's `compileForm` expects (string/number/boolean/array with
       the file metadata under `json_schema_extra`)
-- [ ] `UploadedFile` instances expose a `.text()` accessor (bytes read as UTF-8);
+- [x] `UploadedFile` instances expose a `.text()` accessor (bytes read as UTF-8);
       no file I/O or size enforcement happens in this class (that's `execution`)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_params.py`
-- [ ] Manual check: `Params.model_json_schema()` on a sample subclass matches
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_params.py`
+- [x] Manual check: `Params.model_json_schema()` on a sample subclass matches
       the shape documented in `SPEC-catalog.md`'s `RunForm` code sample
 
 **Dependencies:** Task 0
@@ -97,7 +97,7 @@ compiler (a different module, already spec'd) can read them later.
 
 ---
 
-### Task 3: Fixture recipes (`echo`, `echo-with-helper`)
+### Task 3: [DONE] Fixture recipes (`echo`, `echo-with-helper`)
 
 **Description:** Two minimal, real recipe directories used by every later test
 in this module. `echo` has no helper files (the trivial path). `echo-with-helper`
@@ -106,17 +106,17 @@ one thing that must work for every real content recipe later, so it's proven
 here rather than discovered during Task 9.
 
 **Acceptance criteria:**
-- [ ] `tests/fixtures/recipes/echo/{recipe.toml,recipe.py}` — a `Params` with one
+- [x] `tests/fixtures/recipes/echo/{recipe.toml,recipe.py}` — a `Params` with one
       `message: str` field; `run()` emits `step` then `result` echoing the message
-- [ ] `tests/fixtures/recipes/echo-with-helper/{recipe.toml,recipe.py,helpers.py}` —
+- [x] `tests/fixtures/recipes/echo-with-helper/{recipe.toml,recipe.py,helpers.py}` —
       `recipe.py` imports and calls a function from `helpers.py`
-- [ ] Both are valid per Task 1's manifest schema and Task 2's `Params` base
+- [x] Both are valid per Task 1's manifest schema and Task 2's `Params` base
       (this task doesn't yet import or run them — that's Task 9/10)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_fixtures_shape.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_fixtures_shape.py`
       (a small test that just parses both manifests and confirms the files exist)
-- [ ] Manual check: `python -c "import ast; ast.parse(open('...').read())"` on
+- [x] Manual check: `python -c "import ast; ast.parse(open('...').read())"` on
       both `recipe.py` files, confirming they're at least syntactically valid
       (full import validation is Task 9)
 
@@ -133,7 +133,7 @@ here rather than discovered during Task 9.
 
 ---
 
-### Task 4: Event models & SSE serialization
+### Task 4: [DONE] Event models & SSE serialization
 
 **Description:** Pydantic models for the seven event types
 (`step, token, tool_call, log, artifact, result, error`) as a discriminated
@@ -142,16 +142,16 @@ examples in `SPEC-recipe-framework.md` byte-for-byte in shape (field names,
 enums for `error_type` and `artifact.kind`).
 
 **Acceptance criteria:**
-- [ ] Each of the 7 event types round-trips through `model_dump_json()` /
+- [x] Each of the 7 event types round-trips through `model_dump_json()` /
       `model_validate_json()` and matches the spec's documented JSON shape
-- [ ] `error_type` is a closed enum (`timeout | output_limit | recipe_error |
+- [x] `error_type` is a closed enum (`timeout | output_limit | recipe_error |
       bad_input | upstream_error`); `artifact.kind` is a closed enum
       (`json | table | markdown | file`)
-- [ ] An invalid/unknown event `type` fails validation with a clear error
+- [x] An invalid/unknown event `type` fails validation with a clear error
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_events.py`
-- [ ] Manual check: paste one serialized event of each type next to the spec's
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_events.py`
+- [x] Manual check: paste one serialized event of each type next to the spec's
       wire-format examples and diff by eye
 
 **Dependencies:** Task 0
@@ -164,7 +164,7 @@ enums for `error_type` and `artifact.kind`).
 
 ---
 
-### Task 5: Emitter
+### Task 5: [DONE] Emitter
 
 **Description:** The `Emitter` class recipes call (`ctx.emit.step(...)`,
 `.token(...)`, etc.). It is a thin, dumb sink — each method constructs the
@@ -173,17 +173,17 @@ construction (the executor will supply the real sink in Task 10; tests supply a
 list-appending stub).
 
 **Acceptance criteria:**
-- [ ] Each of the 7 methods exists with the signature implied by the code sample
+- [x] Each of the 7 methods exists with the signature implied by the code sample
       in `SPEC-recipe-framework.md` and pushes the correctly-typed event
-- [ ] Calling methods out of order (e.g. `result` then `token`) is *not* blocked
+- [x] Calling methods out of order (e.g. `result` then `token`) is *not* blocked
       by the Emitter itself — ordering/terminal-event enforcement is the
       executor's job (Task 10), not this class's
-- [ ] A dev-mode check (assertion, not exception) flags a `step` `start` with no
+- [x] A dev-mode check (assertion, not exception) flags a `step` `start` with no
       matching `finish`/`error` by the time the recipe returns — logged, not
       raised, since the executor injects a terminal event regardless
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_emitter.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_emitter.py`
 
 **Dependencies:** Task 4
 
@@ -195,7 +195,7 @@ list-appending stub).
 
 ---
 
-### Task 6: `RecipeContext` & `FileBundle`
+### Task 6: [DONE] `RecipeContext` & `FileBundle`
 
 **Description:** The `RecipeContext` dataclass recipes receive (`config`,
 `files`, `emit`, `deadline`), and `FileBundle`, whose `.fixtures(name)` reads
@@ -205,18 +205,18 @@ does not build it (that's `settings`/`execution`'s job), only defines the shape
 recipes read from.
 
 **Acceptance criteria:**
-- [ ] `FileBundle.fixtures("sample-docs")` resolves inside that recipe's own
+- [x] `FileBundle.fixtures("sample-docs")` resolves inside that recipe's own
       `fixtures/` dir and raises (not silently returns empty) for a path outside
       it, including `../` traversal attempts
-- [ ] `RecipeContext.config["SOME_KEY"]` behaves like a plain read-only mapping;
+- [x] `RecipeContext.config["SOME_KEY"]` behaves like a plain read-only mapping;
       missing-key access raises `KeyError` (recipes are expected to check
       membership or use `.get`)
-- [ ] `ctx.deadline` is a plain `float` (monotonic timestamp); this class does
+- [x] `ctx.deadline` is a plain `float` (monotonic timestamp); this class does
       not enforce it — Task 10's executor does
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_context.py`
-- [ ] Manual check: a `../../etc/passwd`-style `fixtures()` call is rejected by
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_context.py`
+- [x] Manual check: a `../../etc/passwd`-style `fixtures()` call is rejected by
       a dedicated test, not just informally verified
 
 **Dependencies:** Task 5
@@ -230,9 +230,9 @@ recipes read from.
 ---
 
 ## Checkpoint A: Foundations (after Tasks 0–6)
-- [ ] `cd backend && uv run pytest` — all green
-- [ ] `cd backend && uv run ruff check` — clean
-- [ ] No task above required importing a recipe module dynamically — that
+- [x] `cd backend && uv run pytest` — all green (50/50)
+- [x] `cd backend && uv run ruff check` — clean
+- [x] No task above required importing a recipe module dynamically — that
       starts in Phase 3
 - [ ] **Human review before Phase 2**
 
