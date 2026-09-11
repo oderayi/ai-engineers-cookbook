@@ -1,0 +1,14 @@
+[recipe]
+slug = "echo-with-helper"
+title = "Echo with helper"
+summary = "Like echo, but calls into a sibling helpers.py — proves relative imports resolve."
+difficulty = "basic"
+order = 2
+estimated_runtime_seconds = 1
+
+use_cases = [
+  "Recipe-framework smoke test for sibling-file imports",
+]
+
+[recipe.entrypoint]
+module = "recipe"
