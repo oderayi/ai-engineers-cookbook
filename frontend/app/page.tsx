@@ -1,8 +1,12 @@
+import { BookOpen } from "lucide-react";
+
+import { EmptyState } from "@/components/primitives/empty-state";
+
 export default function Home() {
   return (
-    <p>
-      Skillet — scaffold placeholder. Replaced by the real Shell + fixture
-      data in app-shell Task 10.
-    </p>
+    <EmptyState
+      icon={BookOpen}
+      message="The recipe catalog isn't built yet — this is app-shell's placeholder main content, rendered against fixture nav data with no backend."
+    />
   );
 }

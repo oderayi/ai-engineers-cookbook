@@ -5,20 +5,22 @@ const nextConfig: NextConfig = {
   /* config options here */
 };
 
-// @serwist/next's InjectManifest plugin is webpack-based, so it adds a
-// `webpack()` function to the Next config. Next.js 16 builds with Turbopack
-// by default and refuses to build when a `webpack` config is present, so the
-// "build" script in package.json opts back into webpack (`next build
-// --webpack`) — `next dev` stays on Turbopack; Serwist's manifest injection
-// is a build-time-only concern. See docs/SPEC-app-shell.md Task 7 and
+// @serwist/next's InjectManifest plugin is webpack-based, so wrapping the
+// config with it adds a `webpack()` function *unconditionally* — the
+// `disable` option only skips Serwist's own runtime logic, it does not stop
+// that key from being added. Next.js 16 refuses to run *either* `next dev`
+// or `next build` under Turbopack (the default for both) when a `webpack`
+// config is present, so the wrapped config must only ever be exported for an
+// actual production build — never for dev, where Turbopack must see a config
+// with no `webpack` key at all. The "build" script in package.json also opts
+// back into webpack (`next build --webpack`) for the one command that needs
+// Serwist's manifest injection; `next dev`/`next start` stay on Turbopack.
+// See docs/SPEC-app-shell.md Task 7 and
 // node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md
 // ("Turbopack by default").
 const withSerwist = withSerwistInit({
   swSrc: "sw.ts",
   swDest: "public/sw.js",
-  // Manifest injection only matters for production builds; skip it (and the
-  // Turbopack-mismatch warning) during `next dev`.
-  disable: process.env.NODE_ENV !== "production",
 });
 
-export default withSerwist(nextConfig);
+export default process.env.NODE_ENV === "production" ? withSerwist(nextConfig) : nextConfig;
