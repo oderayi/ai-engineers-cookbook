@@ -32,18 +32,36 @@ into the actual `Shell` last, wire up `app/layout.tsx` against fixture data
   built yet, and success criterion 6 requires the shell to work without it.
 - **Playwright/axe E2E is a real environment risk, not just a task.** These
   need browser binaries and may not run in this sandbox — flagged in Risks,
-  not silently assumed working.
+  not silently assumed working. *(Resolved during Task 0: `bunx playwright
+  install chromium` succeeded in this environment — the risk didn't
+  materialize, noted here rather than silently dropped.)*
+- **Next.js 16, not 15** (Task 0). `create-next-app@latest` resolved to 16.3.4;
+  building on the current stable major rather than force-pinning an outdated
+  one. App Router layout/page fundamentals are unchanged (confirmed against
+  the bundled `node_modules/next/dist/docs/`); Turbopack is now the default
+  bundler for `dev` and `build`, which is a real risk for Task 7's Serwist
+  integration (Serwist's plugin has historically hooked into webpack config).
+- **shadcn's generated tokens/theming won by default over the spec's original
+  plan** (Tasks 1-2). The spec had invented its own `--color-*` names and a
+  `data-theme` attribute for dark mode; `shadcn init` generates semantically
+  -named tokens (`--background`, `--primary`, `--sidebar*`, ...) and assumes
+  class-based (`.dark`) dark mode. Every future `bunx shadcn add` component
+  depends on that convention, so the spec was corrected to match shadcn
+  rather than maintaining two parallel theming systems forever. Skillet's
+  warm accent now lives on `--primary`/`--ring`/`--sidebar-primary` (not
+  shadcn's own `--accent`, which means something different in its
+  convention — see `SPEC-app-shell.md`).
 
 ## Task List
 
 ### Phase 0: Scaffold (sequential — shared foundation)
-- [ ] Task 0: Next.js 15 + TypeScript + Tailwind v4 + bun project scaffold
-- [ ] Task 1: shadcn/ui init (`lib/cn.ts` alias, `components.json`)
-- [ ] Task 2: Design tokens (`globals.css` `@theme`, light + dark, `lib/tokens.ts`)
+- [x] Task 0: Next.js scaffold (16, not 15 — see Architecture Decisions) + TypeScript + Tailwind v4 + bun
+- [x] Task 1: shadcn/ui init (`lib/cn.ts` alias, `components.json`)
+- [x] Task 2: Design tokens (shadcn's generated tokens + Skillet's accent/layout/motion additions — see Architecture Decisions)
 
 ### Checkpoint: Foundation
-- [ ] `bun run dev` boots, `bun run build` succeeds
-- [ ] `bun run typecheck` and `bun run lint` clean
+- [x] `bun run dev` boots, `bun run build` succeeds
+- [x] `bun run typecheck` and `bun run lint` clean
 - [ ] Human review before the parallel batch
 
 ### Phase 1: Parallel batch — 5 independent tracks
@@ -97,7 +115,7 @@ itself before reporting back. I review and integrate all five before Phase 2.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Playwright/axe E2E may not run in this sandboxed environment (browser binaries, permissions) | Medium — Task 12 could stall | Attempt `bunx playwright install`; if it fails, write the specs anyway (they're correct and reviewable), document that they're unverified in this environment, and flag it explicitly rather than claiming a false pass |
+| ~~Playwright/axe E2E may not run in this sandboxed environment~~ | ~~Medium~~ | **Resolved in Task 0**: `bunx playwright install chromium` succeeded — Task 12 can run for real, not just be written and hoped for |
 | Parallel subagents drift from the spec's exact prop names/shapes (e.g. `Shell({ nav, tabs, children })`) | Medium — integration rework in Phase 2 | Each subagent prompt quotes the exact interface from the spec's code samples; I diff each track's public exports against the spec before merging |
 | shadcn's default `lib/utils.ts` fights the spec's `lib/cn.ts` | Low | Configure `components.json`'s aliases before any component is generated (Task 1) |
 | Tailwind v4's `@theme` syntax or Serwist's Next 15 integration has changed since the spec was written | Low–Medium | Verify against currently-installed package versions during Task 0/2/7, not against memorized API shape |

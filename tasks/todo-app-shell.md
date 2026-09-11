@@ -6,26 +6,26 @@ Plan: [tasks/plan-app-shell.md](plan-app-shell.md). Spec: [docs/SPEC-app-shell.m
 
 ## Phase 0: Scaffold (sequential)
 
-### Task 0: Next.js 15 + TypeScript + Tailwind v4 + bun scaffold
+### Task 0: [DONE] Next.js 15 + TypeScript + Tailwind v4 + bun scaffold
 
 **Description:** Create `frontend/` — a Next.js 15 App Router project,
 TypeScript, Tailwind v4, bun as the package manager/runtime, Vitest +
 Testing Library configured for jsdom, Playwright installed for E2E.
 
 **Acceptance criteria:**
-- [ ] `frontend/package.json` scripts: `dev`, `build`, `start`, `lint`,
+- [x] `frontend/package.json` scripts: `dev`, `build`, `start`, `lint`,
       `typecheck`, `test`, `test:e2e` matching `SPEC-app-shell.md`'s Commands
-- [ ] `bun install` succeeds; `bun run dev` boots a default page;
+- [x] `bun install` succeeds; `bun run dev` boots a default page;
       `bun run build` succeeds
-- [ ] Vitest configured with jsdom + `@testing-library/react`; a trivial
+- [x] Vitest configured with jsdom + `@testing-library/react`; a trivial
       smoke test passes via `bun run test`
-- [ ] Playwright config present (`bunx playwright install` attempted — note
+- [x] Playwright config present (`bunx playwright install` attempted — note
       the result, don't block scaffold completion on it)
 
 **Verification:**
-- [ ] `cd frontend && bun install && bun run build`
-- [ ] `cd frontend && bun run test` (smoke test)
-- [ ] `cd frontend && bun run typecheck && bun run lint`
+- [x] `cd frontend && bun install && bun run build`
+- [x] `cd frontend && bun run test` (smoke test)
+- [x] `cd frontend && bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -38,7 +38,7 @@ Testing Library configured for jsdom, Playwright installed for E2E.
 
 ---
 
-### Task 1: shadcn/ui init with `lib/cn.ts`
+### Task 1: [DONE] shadcn/ui init with `lib/cn.ts`
 
 **Description:** Initialize shadcn/ui, configuring its utils alias so the
 generated helper lands at `lib/cn.ts` (per the spec) rather than the default
@@ -46,14 +46,14 @@ generated helper lands at `lib/cn.ts` (per the spec) rather than the default
 (`button`, `tooltip`) as a smoke test of the pipeline.
 
 **Acceptance criteria:**
-- [ ] `components.json` present with the `cn` alias pointed at `lib/cn.ts`
-- [ ] `lib/cn.ts` exports `cn()` (clsx + tailwind-merge)
-- [ ] `bunx shadcn@latest add button tooltip` succeeds and lands components
+- [x] `components.json` present with the `cn` alias pointed at `lib/cn.ts`
+- [x] `lib/cn.ts` exports `cn()` (clsx + tailwind-merge)
+- [x] `bunx shadcn@latest add button tooltip` succeeds and lands components
       under `components/ui/`
 
 **Verification:**
-- [ ] `bun run typecheck` after generation
-- [ ] Manual check: import `cn` from `@/lib/cn` in a scratch component, confirm
+- [x] `bun run typecheck` after generation
+- [x] Manual check: import `cn` from `@/lib/cn` in a scratch component, confirm
       it resolves
 
 **Dependencies:** Task 0
@@ -67,29 +67,35 @@ generated helper lands at `lib/cn.ts` (per the spec) rather than the default
 
 ---
 
-### Task 2: Design tokens
+### Task 2: [DONE] Design tokens
 
 **Description:** The token system from `SPEC-app-shell.md`'s Code Style
 section — CSS custom properties in `globals.css` under `@theme`, a dark
 override block, and a typed `lib/tokens.ts` for referencing them from TS where
 needed (e.g. computing a class conditionally).
 
-**Acceptance criteria:**
-- [ ] `globals.css` defines exactly the token set in the spec (`--color-bg`,
-      `--color-surface`, `--color-border`, `--color-fg`, `--color-fg-muted`,
-      `--color-accent`, `--color-accent-fg`, `--radius`, `--space-gutter`,
-      `--content-max`, `--ease-out`, `--dur-fast`, `--dur`) plus a `--sidebar-w`
-      token (needed by `shell.tsx`'s grid, implied but not spelled out —
-      pick a sensible default, e.g. `16rem`)
-- [ ] `:root[data-theme="dark"]` overrides the color tokens per the spec
-- [ ] `lib/tokens.ts` exports a typed object/enum of token names (no magic
-      strings for consumers)
-- [ ] A scratch element using `bg-[var(--color-surface)]` etc. renders visibly
-      different in light vs. dark (manual check)
+**Acceptance criteria — revised during implementation** (shadcn init's
+generated tokens took precedence over the originally-drafted `--color-*`
+names; see `SPEC-app-shell.md`'s Code Style section, amended in the same
+commit):
+- [x] shadcn's generated `--background`/`--foreground`/`--card`/`--border`/
+      `--muted`/`--sidebar*`/`--radius` etc. kept as-is (not reinvented)
+- [x] Skillet's warm accent layered onto `--primary`/`--primary-foreground`/
+      `--ring`/`--sidebar-primary`/`--sidebar-ring` (deliberately not
+      shadcn's own `--accent`, a naming collision — see the spec)
+- [x] `--radius` set to `0.5rem` (spec: 6-8px)
+- [x] Skillet-only additions with no shadcn equivalent: `--sidebar-w`,
+      `--space-gutter`, `--content-max`, `--ease-out`, `--dur-fast`, `--dur`
+- [x] Dark mode stays **class-based** (`.dark` on `<html>`), matching
+      shadcn's generated CSS and every future `shadcn add` component —
+      not the originally-planned `data-theme` attribute
+- [x] `lib/tokens.ts` exports a typed object of the layout/motion token names
+      that aren't wired into a Tailwind utility class
 
 **Verification:**
-- [ ] `bun run build` succeeds with the new CSS
-- [ ] Manual check: toggle `data-theme` on `<html>` in devtools, confirm colors flip
+- [x] `bun run build` succeeds with the new CSS
+- [x] Manual check: toggle the `.dark` class on `<html>` in devtools, confirm
+      the accent and neutrals flip
 
 **Dependencies:** Task 1
 
@@ -102,8 +108,8 @@ needed (e.g. computing a class conditionally).
 ---
 
 ## Checkpoint: Foundation (after Tasks 0–2)
-- [ ] `bun run dev` boots, `bun run build` succeeds
-- [ ] `bun run typecheck` and `bun run lint` clean
+- [x] `bun run dev` boots, `bun run build` succeeds
+- [x] `bun run typecheck` and `bun run lint` clean
 - [ ] **Human review before the parallel batch**
 
 ---
@@ -149,14 +155,17 @@ inline script pattern, and `theme-toggle.tsx` — light/dark/system, default
 light, persisted to `localStorage`.
 
 **Acceptance criteria:**
-- [ ] A `ThemeProvider` wrapper component (or direct `next-themes` usage) is
-      ready to mount in `app/layout.tsx` (actual mounting is Task 10)
-- [ ] An inline script (or `next-themes`' own no-flash mechanism) sets
-      `data-theme` before first paint — a test asserts the script/mechanism is
-      present in the rendered HTML
+- [ ] A `ThemeProvider` wrapper component using `next-themes` with
+      `attribute="class"` (matches shadcn's generated `.dark`-class CSS —
+      **not** `data-theme`, a correction made in Tasks 1-2, see
+      `SPEC-app-shell.md`) is ready to mount in `app/layout.tsx` (actual
+      mounting is Task 10)
+- [ ] An inline script (or `next-themes`' own no-flash mechanism) sets the
+      `.dark` class before first paint — a test asserts the script/mechanism
+      is present in the rendered HTML
 - [ ] `theme-toggle.tsx`: cycles light → dark → system (or a 2-state toggle +
-      "use system" — pick one, document it in the component), updates
-      `data-theme` on `<html>`, persists the choice
+      "use system" — pick one, document it in the component), updates the
+      `.dark` class on `<html>`, persists the choice
 - [ ] Default theme (no stored preference) is **light**, not system —
       per the spec's Confirmed Decision 7
 
@@ -394,10 +403,9 @@ fixes in existing Phase 1/2 files, not new ones.
 
 ### Task 12: Playwright E2E — install, offline, a11y
 
-**Description:** The three E2E specs the spec calls for. **Environment risk:**
-Playwright needs browser binaries; if `bunx playwright install` isn't viable
-in this sandbox, write the specs correctly and say so plainly rather than
-claiming a false pass.
+**Description:** The three E2E specs the spec calls for. Playwright's
+chromium binary is confirmed installed in this environment (Task 0), so
+these should actually run rather than just be written and hoped for.
 
 **Acceptance criteria:**
 - [ ] `pwa-install.spec.ts`: manifest valid, service worker registers,
