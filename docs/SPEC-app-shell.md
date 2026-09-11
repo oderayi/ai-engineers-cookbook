@@ -57,7 +57,12 @@ backend.
    active nav item, primary buttons, and the focus ring. Everything else neutral.
 7. **Theming:** light + dark + system via `next-themes`; toggle in the sidebar
    footer; persisted to `localStorage`; no flash on load. **Default: light
-   (white).**
+   (white).** **Dark-mode trigger: the `.dark` class on `<html>`
+   (`next-themes`' `attribute="class"`), not a `data-theme` attribute** —
+   corrected during Task 1/2 (see Code Style) once `shadcn init`'s generated
+   `globals.css` turned out to assume `.dark`; every future
+   `bunx shadcn add` component relies on that same convention, so fighting it
+   would mean keeping two theming systems in sync forever.
 8. **PWA:** `@serwist/next`. Offline = browse-only: app shell + catalog metadata
    + already-viewed recipe source are cached and readable offline; running a
    recipe shows an offline state.
@@ -133,35 +138,53 @@ frontend/
 
 ## Code Style
 
-Tokens are CSS custom properties defined once in `globals.css`, referenced
-through Tailwind v4's `@theme` and a typed `tokens.ts`. Components never hardcode
-hex or px for anything themed.
+**Amended during Task 1/2 (implementation predates this text; `shadcn init`'s
+generated tokens took precedence over the originally-drafted `--color-*`
+names — see Confirmed Decision 7).** `shadcn init` generates its own semantic
+token set (`--background`, `--foreground`, `--card`, `--border`, `--muted`,
+`--primary`, `--sidebar*`, `--radius`, etc.) plus a ready-made `--sidebar*`
+group — exactly what "sidebar / cards" needed, so it's used directly rather
+than inventing a parallel `--color-surface`. Skillet adds only what shadcn
+doesn't already have: the warm accent (layered onto `--primary`/`--ring`,
+*not* shadcn's own `--accent`, which means "subtle hover surface" in its
+convention — a real naming collision, resolved by not touching `--accent`),
+spacing/motion/layout tokens, and a `--sidebar-w` layout token. Components
+still never hardcode hex or px for anything themed.
 
 ```css
-/* globals.css */
-@theme {
-  --color-bg:            oklch(99% 0 0);         /* app background (light) */
-  --color-surface:       oklch(97.5% 0.004 60);  /* sidebar / cards */
-  --color-border:        oklch(92% 0.004 60);    /* hairlines */
-  --color-fg:            oklch(22% 0.01 60);
-  --color-fg-muted:      oklch(50% 0.01 60);
-  --color-accent:        oklch(58% 0.16 40);     /* burnt orange */
-  --color-accent-fg:     oklch(99% 0 0);
-  --radius:              0.5rem;
-  --space-gutter:        1.5rem;
-  --content-max:         46rem;
-  --ease-out:            cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-fast:            120ms;
-  --dur:                 200ms;
+/* globals.css — shadcn-generated tokens shown abbreviated; Skillet's
+   additions/overrides are the ones spelled out in full */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ...shadcn's generated --color-* -> var(--*) mappings, unchanged... */
 }
 
-:root[data-theme="dark"] {
-  --color-bg:      oklch(18% 0.005 60);
-  --color-surface: oklch(21% 0.006 60);
-  --color-border:  oklch(28% 0.006 60);
-  --color-fg:      oklch(94% 0.004 60);
-  --color-fg-muted:oklch(68% 0.006 60);
-  --color-accent:  oklch(64% 0.15 45);
+:root {
+  /* ...shadcn's generated neutral/card/sidebar/chart values, unchanged... */
+  --radius: 0.5rem;                              /* spec: small radii, 6-8px */
+  --primary: oklch(58% 0.16 40);                 /* Skillet accent: burnt orange */
+  --primary-foreground: oklch(99% 0 0);
+  --ring: oklch(58% 0.16 40);                    /* focus ring matches accent */
+
+  /* Skillet-only additions, not part of shadcn's set: */
+  --sidebar-w: 16rem;
+  --space-gutter: 1.5rem;
+  --content-max: 46rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+}
+
+.dark {
+  /* ...shadcn's generated dark neutral/card/sidebar/chart values, unchanged... */
+  --primary: oklch(64% 0.15 45);                 /* accent, dark-adjusted */
+  --primary-foreground: oklch(99% 0 0);
+  --ring: oklch(64% 0.15 45);
 }
 ```
 
@@ -193,10 +216,10 @@ explicit interface; Tailwind classes ordered layout → box → type → color �
 
 - **Unit / component (Vitest + Testing Library):** sidebar renders a handed nav
   tree; collapse toggles and persists; `CollapsibleSection` open/close + a11y
-  attributes; `EmptyState` / `Skeleton` render; theme toggle updates
-  `data-theme` and `localStorage`.
-- **No-flash test:** the inline theme script sets `data-theme` before first
-  paint (assert the script is present and runs pre-hydration).
+  attributes; `EmptyState` / `Skeleton` render; theme toggle updates the
+  `.dark` class on `<html>` and `localStorage`.
+- **No-flash test:** the inline theme script sets the `.dark` class before
+  first paint (assert the script is present and runs pre-hydration).
 - **E2E (Playwright):**
   - `pwa-install`: manifest is valid, service worker registers, `beforeinstallprompt` fires.
   - `offline-browse`: load app, go offline, navigate the cached nav + a
