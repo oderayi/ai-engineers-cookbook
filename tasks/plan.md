@@ -1,0 +1,119 @@
+# Implementation Plan: `recipe-framework`
+
+Spec: [docs/SPEC-recipe-framework.md](../docs/SPEC-recipe-framework.md).
+Capability map: [docs/CAPABILITY-MAP.md](../docs/CAPABILITY-MAP.md).
+This is the **first** module built, per the approved build order (nothing else
+is unblocked until it works).
+
+## Overview
+
+Build the recipe contract and backend machinery from scratch: nothing exists in
+`backend/` yet. The module has five layers — manifest/params primitives, the
+event/emitter system, discovery + source reading, the executor, and the
+read-only API + CLI on top — built bottom-up so every task lands on a working,
+tested foundation rather than stubs. A single trivial fixture recipe (`echo`,
+plus a sibling-helper variant) stands in for real content recipes, which get
+their own mini-specs later.
+
+## Architecture Decisions
+
+- **Manifest-only discovery, lazy Python import.** `discovery.py` never imports
+  recipe code — only `tomllib`. Python is imported once, on demand, by
+  `executor.load_recipe()`, and only that function knows how to turn a recipe
+  directory into an importable module (including sibling helper files via
+  relative imports). This keeps `GET /recipes` fast and import-safe, per the
+  spec's success criterion 8.
+- **The executor is two functions, not one.** `load_recipe()` (import + contract
+  validation) is separated from `execute()` (the async run loop) because both
+  `execute()` and `skillet recipes validate` need the load/validate step without
+  the run loop. Splitting them means `validate` doesn't need to actually run
+  anything to catch a malformed recipe.
+- **Two fixture recipes, not one.** `echo` (no helpers) proves the trivial path;
+  `echo-with-helper` proves the sibling-import path (`from .helpers import …`)
+  that real content recipes will rely on (`recipe-framework` Confirmed Decision
+  9). Getting this wrong is a "works for the demo, breaks for every real recipe"
+  class of bug, so it's exercised from Phase 1, not discovered later.
+- **Timeout and caps live in the executor, not the emitter.** The `Emitter` is a
+  dumb sink; `execute()` owns the `asyncio.timeout()`, the cumulative
+  output-byte counter, and the event-count counter, because only it knows when
+  to stop the task and what terminal event to inject.
+
+## Task List
+
+### Phase 0: Scaffold
+- [ ] Task 0: Repo & backend package scaffold
+
+### Phase 1: Foundations (manifest, params, events, context)
+- [ ] Task 1: Manifest schema & TOML parsing
+- [ ] Task 2: Params base & UploadedFile field
+- [ ] Task 3: Fixture recipes (`echo`, `echo-with-helper`)
+- [ ] Task 4: Event models & SSE serialization
+- [ ] Task 5: Emitter
+- [ ] Task 6: RecipeContext & FileBundle
+
+### Checkpoint A — Foundations
+- [ ] `uv run pytest` green, `uv run ruff check` clean
+- [ ] No integration yet — every task above is unit-tested in isolation
+- [ ] Human review before Phase 2
+
+### Phase 2: Discovery & source
+- [ ] Task 7: Recipe discovery
+- [ ] Task 8: Source reader & hashing
+
+### Checkpoint B — Discovery & source
+- [ ] Discovery + source tests pass against both fixture recipes
+- [ ] Duplicate-slug and dir-name/slug-mismatch detection verified
+
+### Phase 3: Executor
+- [ ] Task 9: Recipe loading & contract validation
+- [ ] Task 10: Execution loop (timeout, caps, terminal-event guarantee)
+- [ ] Task 11: Isolation-swap guard test
+
+### Checkpoint C — Executor
+- [ ] Both fixture recipes run end-to-end through `execute()` with correct
+      event ordering
+- [ ] Timeout → single `error(timeout)`; cap breach → single `error(output_limit)`
+- [ ] Human review before exposing any of this over HTTP
+
+### Phase 4: Read-only API
+- [ ] Task 12: FastAPI app skeleton + `GET /recipes`
+- [ ] Task 13: `GET /recipes/{slug}` full detail
+- [ ] Task 14: `GET /recipes/{slug}/source`
+- [ ] Task 15: The 1-to-1 source-hash test (critical)
+
+### Checkpoint D — API
+- [ ] `GET /recipes` verified not to import any recipe module (success criterion 8)
+- [ ] 1-to-1 source-hash test passes for both fixtures (success criterion 2)
+
+### Phase 5: CLI & hardening
+- [ ] Task 16: `skillet recipes validate`
+- [ ] Task 17: `skillet recipes list` & `skillet recipes new`
+- [ ] Task 18: Coverage & success-criteria sign-off pass
+
+### Checkpoint E — Module complete
+- [ ] All 9 success criteria in `SPEC-recipe-framework.md` individually verified
+- [ ] `src/skillet/recipe/` ≥ 90% line coverage
+- [ ] Full suite + lint green; human review before `app-shell`/other modules
+      begin consuming this one
+
+## Risks and Mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Dynamic import of a recipe module with sibling relative imports (`from .helpers import …`) is fiddly with `importlib` | High — breaks every real recipe that has helpers, not just the fixture | Register the recipe directory as a synthetic package via `importlib.util.spec_from_file_location` + `sys.modules` insertion under a private namespace; prove it with `echo-with-helper` in Phase 1, before the executor is built on top of it |
+| Wall-clock timeout leaves orphaned resources (temp files, background tasks) on cancellation | Medium — resource leak under load | `execute()` wraps the run in `asyncio.timeout()` with cleanup in `finally`; Task 10's tests assert no lingering task after a timeout |
+| Output-byte cap miscounts (e.g. counts pre-serialization size, or double-counts) | Low–Medium — cap either never trips or trips too early | Measure `len(event.model_dump_json().encode())` cumulatively, tested with an event stream engineered to land exactly at and one byte over the cap |
+| `GET /recipes/{slug}` needs a lazy import (for `input_schema`) that could accidentally leak into `GET /recipes`' import-free guarantee if code is shared carelessly | Medium — silently violates success criterion 8 | Task 12's test (import patched to raise) runs against `GET /recipes` specifically and stays in the suite permanently, not just during Task 12 |
+
+## Open Questions
+
+Carried from the spec, not blocking for these tasks (they affect *content*
+recipes or other modules, not the framework itself):
+
+- Startup validation mode (dev fail-fast vs. prod lazy import) — Task 18 can
+  implement either behind a flag once decided; doesn't change any task's shape.
+- Uploaded-file size/count defaults — owned by `execution`/`trial-limits`;
+  `UploadedFile` (Task 2) only needs to carry `accept`/`max_files` metadata, not
+  enforce numbers.
+- `tool_call` result truncation rule — not implemented in Task 4/5; flagged so
+  it isn't forgotten when `execution` needs it.

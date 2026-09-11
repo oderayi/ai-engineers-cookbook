@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//private/tmp/**)",
+      "Bash(npx skills@latest add mattpocock/skills --skill=grill-me --agent='*' --global -y)"
+    ]
+  }
+}
