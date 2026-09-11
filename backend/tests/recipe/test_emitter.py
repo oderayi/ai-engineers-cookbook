@@ -110,6 +110,14 @@ async def test_ts_increases_across_calls(sink) -> None:
     assert sink.events[1].ts > sink.events[0].ts
 
 
+def test_elapsed_matches_internal_clock(sink) -> None:
+    # construction itself consumes the clock's first tick as `self._start`
+    clock = fake_clock()
+    emitter = Emitter(sink, clock=clock)
+    assert emitter.elapsed() == 1.0  # clock() - start == 1.0 - 0.0
+    assert emitter.elapsed() == 2.0  # fake_clock advances by 1.0 each call
+
+
 async def test_unclosed_step_tracked(sink) -> None:
     emitter = Emitter(sink, clock=fake_clock())
     await emitter.step("a", "A", status="start")

@@ -44,6 +44,13 @@ class Emitter:
     def _ts(self) -> float:
         return self._clock() - self._start
 
+    def elapsed(self) -> float:
+        """Seconds since this Emitter was constructed. Public so the executor
+        can timestamp events it injects itself (timeout/cap-breach errors)
+        with the same clock recipe-emitted events use.
+        """
+        return self._ts()
+
     async def step(self, id: str, name: str, *, status: str, detail: str | None = None) -> None:
         if status == "start":
             self._open_steps[id] = name

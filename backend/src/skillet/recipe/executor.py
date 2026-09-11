@@ -9,20 +9,29 @@ See docs/SPEC-recipe-framework.md.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import importlib.util
 import inspect
+import logging
 import sys
+import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from importlib.machinery import ModuleSpec
 from pathlib import Path
 from types import ModuleType
 
-from skillet.recipe.context import RecipeContext
+from skillet.recipe.context import FileBundle, RecipeContext
+from skillet.recipe.emitter import Emitter
+from skillet.recipe.events import ErrorEvent, RecipeEvent, ResultEvent
 from skillet.recipe.params import Params
 
+logger = logging.getLogger(__name__)
+
 RunFn = Callable[[Params, RecipeContext], Awaitable[None]]
+_SENTINEL = object()
 
 
 class RecipeContractError(Exception):
@@ -97,3 +106,97 @@ def _import_recipe_module(recipe_dir: Path, entrypoint_module: str) -> ModuleTyp
         raise RecipeContractError(f"{recipe_dir}: failed to import — {exc}") from exc
 
     return module
+
+
+async def execute(
+    loaded: LoadedRecipe,
+    params: Params,
+    *,
+    config: Mapping[str, str],
+    files: FileBundle,
+    timeout_s: float = 90.0,
+    max_bytes: int = 256_000,
+    max_events: int = 2000,
+) -> AsyncIterator[RecipeEvent]:
+    """Run `loaded.run(params, ctx)`, yielding events as the recipe emits
+    them.
+
+    Enforces `timeout_s` (wall-clock), `max_bytes` (cumulative serialized
+    event size), and `max_events`, and guarantees exactly one terminal event
+    (`result` or `error`) — even if the recipe raises, times out, breaches a
+    cap, or simply forgets to emit one.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def sink(event: RecipeEvent) -> None:
+        await queue.put(event)
+
+    emitter = Emitter(sink)
+    ctx = RecipeContext(
+        config=config, files=files, emit=emitter, deadline=time.monotonic() + timeout_s
+    )
+
+    async def runner() -> None:
+        try:
+            await asyncio.wait_for(loaded.run(params, ctx), timeout=timeout_s)
+        except TimeoutError:
+            await queue.put(
+                ErrorEvent(
+                    error_type="timeout", message=f"exceeded {timeout_s}s", ts=emitter.elapsed()
+                )
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # the recipe raised — log the traceback, never leak it
+            logger.exception("recipe raised during execution")
+            await queue.put(
+                ErrorEvent(error_type="recipe_error", message=str(exc), ts=emitter.elapsed())
+            )
+        finally:
+            emitter.audit_unclosed_steps()
+            with contextlib.suppress(asyncio.CancelledError):
+                await queue.put(_SENTINEL)
+
+    task = asyncio.create_task(runner())
+
+    total_bytes = 0
+    event_count = 0
+    terminal_sent = False
+
+    try:
+        while True:
+            event = await queue.get()
+            if event is _SENTINEL:
+                break
+
+            event_count += 1
+            total_bytes += len(event.model_dump_json().encode())
+
+            if event_count > max_events or total_bytes > max_bytes:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                yield ErrorEvent(
+                    error_type="output_limit",
+                    message=f"exceeded output limits (events={event_count}, bytes={total_bytes})",
+                    ts=emitter.elapsed(),
+                )
+                terminal_sent = True
+                return
+
+            if isinstance(event, ResultEvent | ErrorEvent):
+                terminal_sent = True
+
+            yield event
+    finally:
+        if not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    if not terminal_sent:
+        yield ErrorEvent(
+            error_type="recipe_error",
+            message="recipe ended without a terminal event",
+            ts=emitter.elapsed(),
+        )
