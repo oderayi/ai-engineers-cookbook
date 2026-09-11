@@ -76,14 +76,14 @@ their own mini-specs later.
 - [ ] Human review before exposing any of this over HTTP
 
 ### Phase 4: Read-only API
-- [ ] Task 12: FastAPI app skeleton + `GET /recipes`
-- [ ] Task 13: `GET /recipes/{slug}` full detail
-- [ ] Task 14: `GET /recipes/{slug}/source`
-- [ ] Task 15: The 1-to-1 source-hash test (critical)
+- [x] Task 12: FastAPI app skeleton + `GET /recipes`
+- [x] Task 13: `GET /recipes/{slug}` full detail
+- [x] Task 14: `GET /recipes/{slug}/source`
+- [x] Task 15: The 1-to-1 source-hash test (critical)
 
 ### Checkpoint D — API
-- [ ] `GET /recipes` verified not to import any recipe module (success criterion 8)
-- [ ] 1-to-1 source-hash test passes for both fixtures (success criterion 2)
+- [x] `GET /recipes` verified not to import any recipe module (success criterion 8)
+- [x] 1-to-1 source-hash test passes for both fixtures (success criterion 2)
 
 ### Phase 5: CLI & hardening
 - [ ] Task 16: `skillet recipes validate`

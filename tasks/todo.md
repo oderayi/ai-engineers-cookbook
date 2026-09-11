@@ -422,23 +422,23 @@ full discovery → load → execute pipeline.
 
 ## Phase 4: Read-only API
 
-### Task 12: FastAPI app skeleton + `GET /recipes`
+### Task 12: [DONE] FastAPI app skeleton + `GET /recipes`
 
 **Description:** `api/app.py` (app factory) and `api/recipes.py`'s
 `GET /recipes`, returning grouped summaries from Task 7's discovery registry
 only.
 
 **Acceptance criteria:**
-- [ ] Response shape matches the spec's summary fields (`slug, title, summary,
+- [x] Response shape matches the spec's summary fields (`slug, title, summary,
       group, difficulty, order, estimatedRuntimeSeconds`), grouped and ordered
       per discovery
-- [ ] A test monkeypatches the recipe-import path (`importlib.import_module` or
+- [x] A test monkeypatches the recipe-import path (`importlib.import_module` or
       equivalent) to raise, and `GET /recipes` still returns `200` — proving it
       never imports recipe code (success criterion 8)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_recipes_list.py`
-- [ ] Manual check: `uv run fastapi dev src/skillet/api/app.py` and
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_recipes_list.py`
+- [x] Manual check: `uv run fastapi dev src/skillet/api/app.py` and
       `curl localhost:8000/recipes` returns the two fixture recipes
 
 **Dependencies:** Task 7
@@ -452,7 +452,7 @@ only.
 
 ---
 
-### Task 13: `GET /recipes/{slug}` full detail
+### Task 13: [DONE] `GET /recipes/{slug}` full detail
 
 **Description:** Extends `api/recipes.py` with the detail endpoint: manifest
 fields + `useCases` + `readmeMarkdown` (nullable) + `examples` + `inputSchema`
@@ -460,18 +460,18 @@ fields + `useCases` + `readmeMarkdown` (nullable) + `examples` + `inputSchema`
 `sourceFiles` + `env`.
 
 **Acceptance criteria:**
-- [ ] For both fixtures, `inputSchema` matches `Params.model_json_schema()`
+- [x] For both fixtures, `inputSchema` matches `Params.model_json_schema()`
       exactly
-- [ ] Each fixture recipe's `[[recipe.example]].params` (if any) validates
+- [x] Each fixture recipe's `[[recipe.example]].params` (if any) validates
       against its `Params` model — a test adds an example to a fixture with a
       deliberately invalid `params` table and confirms the endpoint (or a
       dedicated contract check) flags it
-- [ ] `readmeMarkdown` is `null` when no `README.md` exists in the recipe dir,
+- [x] `readmeMarkdown` is `null` when no `README.md` exists in the recipe dir,
       and the file's contents otherwise
-- [ ] Unknown `slug` returns `404`
+- [x] Unknown `slug` returns `404`
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_recipe_detail.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_recipe_detail.py`
 
 **Dependencies:** Task 9, Task 12
 
@@ -484,18 +484,18 @@ fixture recipe to exercise the non-null path)
 
 ---
 
-### Task 14: `GET /recipes/{slug}/source`
+### Task 14: [DONE] `GET /recipes/{slug}/source`
 
 **Description:** Extends `api/recipes.py` with the source endpoint, returning
 Task 8's `SourceBundle`.
 
 **Acceptance criteria:**
-- [ ] Response for `echo-with-helper` includes both `recipe.py` and `helpers.py`
+- [x] Response for `echo-with-helper` includes both `recipe.py` and `helpers.py`
       with correct per-file and bundle hashes
-- [ ] Unknown `slug` returns `404`
+- [x] Unknown `slug` returns `404`
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_source.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_api_source.py`
 
 **Dependencies:** Task 8, Task 12
 
@@ -507,7 +507,7 @@ Task 8's `SourceBundle`.
 
 ---
 
-### Task 15: The 1-to-1 source-hash test (critical)
+### Task 15: [DONE] The 1-to-1 source-hash test (critical)
 
 **Description:** The test that proves success criterion 2 — the served source
 *is* the source that runs. For every fixture recipe: hash the bytes
@@ -517,13 +517,13 @@ module's `__file__` and its sibling `.py` files on disk, and hash what
 object) — all three must match.
 
 **Acceptance criteria:**
-- [ ] All three hashes match for `echo` and for `echo-with-helper` (both files)
-- [ ] The test is written so that deliberately corrupting one byte of a fixture
+- [x] All three hashes match for `echo` and for `echo-with-helper` (both files)
+- [x] The test is written so that deliberately corrupting one byte of a fixture
       file on disk (temporarily, within the test) changes all three hashes
       identically — proving the comparison isn't vacuously trivial
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_source_mapping.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_source_mapping.py`
 
 **Dependencies:** Task 10, Task 14
 
@@ -535,12 +535,12 @@ object) — all three must match.
 ---
 
 ## Checkpoint D: Read-only API (after Tasks 12–15)
-- [ ] `GET /recipes` verified not to import any recipe module (success
+- [x] `GET /recipes` verified not to import any recipe module (success
       criterion 8)
-- [ ] `GET /recipes/{slug}` returns `inputSchema`, `sourceFiles`, `env`,
+- [x] `GET /recipes/{slug}` returns `inputSchema`, `sourceFiles`, `env`,
       `examples`, `readmeMarkdown` per the `catalog` cross-module contract
       (success criterion 9)
-- [ ] 1-to-1 source-hash test passes (success criterion 2)
+- [x] 1-to-1 source-hash test passes (success criterion 2)
 - [ ] **Human review before Phase 5**
 
 ---
