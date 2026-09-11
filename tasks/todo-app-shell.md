@@ -119,24 +119,24 @@ commit):
 *Dispatched to subagents concurrently. Each touches a disjoint file set and
 depends only on Tasks 0–2. Write tests first (TDD).*
 
-### Task 3 [PARALLEL — Track A]: Presentational primitives
+### Task 3 [DONE][PARALLEL — Track A]: Presentational primitives
 
 **Description:** Four small, purely presentational components: a collapsible
 section (used by the sidebar/recipe page later), an empty state, a loading
 skeleton, and a toast host.
 
 **Acceptance criteria:**
-- [ ] `CollapsibleSection`: open/close toggle, correct ARIA
+- [x] `CollapsibleSection`: open/close toggle, correct ARIA
       (`aria-expanded`, `aria-controls`), keyboard-operable (Enter/Space)
-- [ ] `EmptyState`: renders an icon/message/optional action slot
-- [ ] `Skeleton`: renders a pulsing placeholder block, width/height as props
-- [ ] `Toaster`: hosts toast notifications (thin wrapper is fine — this is
+- [x] `EmptyState`: renders an icon/message/optional action slot
+- [x] `Skeleton`: renders a pulsing placeholder block, width/height as props
+- [x] `Toaster`: hosts toast notifications (thin wrapper is fine — this is
       infrastructure other modules will call into, not a full toast system)
-- [ ] Each has a Vitest + Testing Library test for its stated behavior
+- [x] Each has a Vitest + Testing Library test for its stated behavior
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test primitives`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test primitives`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 2
 
@@ -148,30 +148,30 @@ skeleton, and a toast host.
 
 ---
 
-### Task 4 [PARALLEL — Track B]: Theming
+### Task 4 [DONE][PARALLEL — Track B]: Theming
 
 **Description:** `next-themes` wiring (provider + hook usage), the no-flash
 inline script pattern, and `theme-toggle.tsx` — light/dark/system, default
 light, persisted to `localStorage`.
 
 **Acceptance criteria:**
-- [ ] A `ThemeProvider` wrapper component using `next-themes` with
+- [x] A `ThemeProvider` wrapper component using `next-themes` with
       `attribute="class"` (matches shadcn's generated `.dark`-class CSS —
       **not** `data-theme`, a correction made in Tasks 1-2, see
       `SPEC-app-shell.md`) is ready to mount in `app/layout.tsx` (actual
       mounting is Task 10)
-- [ ] An inline script (or `next-themes`' own no-flash mechanism) sets the
+- [x] An inline script (or `next-themes`' own no-flash mechanism) sets the
       `.dark` class before first paint — a test asserts the script/mechanism
       is present in the rendered HTML
-- [ ] `theme-toggle.tsx`: cycles light → dark → system (or a 2-state toggle +
+- [x] `theme-toggle.tsx`: cycles light → dark → system (or a 2-state toggle +
       "use system" — pick one, document it in the component), updates the
       `.dark` class on `<html>`, persists the choice
-- [ ] Default theme (no stored preference) is **light**, not system —
+- [x] Default theme (no stored preference) is **light**, not system —
       per the spec's Confirmed Decision 7
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test theme`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test theme`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 2
 
@@ -184,7 +184,7 @@ light, persisted to `localStorage`.
 
 ---
 
-### Task 5 [PARALLEL — Track C]: `sidebar-nav.tsx` + nav fixture
+### Task 5 [DONE][PARALLEL — Track C]: `sidebar-nav.tsx` + nav fixture
 
 **Description:** The data-free nav tree renderer — accepts a nav model
 (groups + recipes, with an optional icon and an optional progress badge slot
@@ -192,19 +192,19 @@ per the `workspace` cross-module contract already agreed in `catalog`'s spec)
 and renders it. No data fetching, no business logic.
 
 **Acceptance criteria:**
-- [ ] `sidebar-nav.tsx` accepts a typed `NavModel` prop (groups → recipes,
+- [x] `sidebar-nav.tsx` accepts a typed `NavModel` prop (groups → recipes,
       each recipe with slug/title/difficulty; group with optional `icon`;
       recipe with an optional `progress` badge) and renders it faithfully
-- [ ] `tests/fixtures/nav-tree.ts` exports a realistic sample `NavModel` (2–3
+- [x] `tests/fixtures/nav-tree.ts` exports a realistic sample `NavModel` (2–3
       groups, 2–4 recipes each) for use here and by Task 10/11
-- [ ] Renders difficulty as a visual badge; renders nothing extra when
+- [x] Renders difficulty as a visual badge; renders nothing extra when
       `icon`/`progress` are absent (matches `catalog`'s "absent data renders
       no badge" contract)
-- [ ] Keyboard-navigable (each recipe link is a real focusable element)
+- [x] Keyboard-navigable (each recipe link is a real focusable element)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test sidebar-nav`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test sidebar-nav`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 2
 
@@ -217,23 +217,23 @@ and renders it. No data fetching, no business logic.
 
 ---
 
-### Task 6 [PARALLEL — Track D]: `topbar.tsx` + `mobile-drawer.tsx`
+### Task 6 [DONE][PARALLEL — Track D]: `topbar.tsx` + `mobile-drawer.tsx`
 
 **Description:** The top bar (a slot on the left for `workspace`'s tab strip,
 fixed actions on the right) and the mobile drawer that the sidebar becomes
 under `md`.
 
 **Acceptance criteria:**
-- [ ] `topbar.tsx` renders `children` (the slot) on the left; a fixed-actions
+- [x] `topbar.tsx` renders `children` (the slot) on the left; a fixed-actions
       region on the right (can be empty/placeholder for now — no other module
       exists yet to fill it)
-- [ ] `mobile-drawer.tsx` opens/closes (button + overlay), traps focus while
+- [x] `mobile-drawer.tsx` opens/closes (button + overlay), traps focus while
       open, closes on Escape and on overlay click
-- [ ] Both keyboard-operable with visible focus rings
+- [x] Both keyboard-operable with visible focus rings
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test topbar mobile-drawer`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test topbar mobile-drawer`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 2
 
@@ -246,26 +246,26 @@ under `md`.
 
 ---
 
-### Task 7 [PARALLEL — Track E]: PWA (manifest, service worker, Serwist)
+### Task 7 [DONE][PARALLEL — Track E]: PWA (manifest, service worker, Serwist)
 
 **Description:** `app/manifest.ts` (Next metadata route), `sw.ts` (Serwist
 service worker source) with an offline-browse caching strategy, the Serwist
 plugin wired into `next.config.ts`, and a minimal icon set.
 
 **Acceptance criteria:**
-- [ ] `app/manifest.ts` produces a valid Web App Manifest (name, icons,
+- [x] `app/manifest.ts` produces a valid Web App Manifest (name, icons,
       `display: "standalone"`, theme/background colors from the tokens)
-- [ ] `sw.ts` precaches the app shell and defines a runtime caching strategy
+- [x] `sw.ts` precaches the app shell and defines a runtime caching strategy
       for same-origin GET requests (stale-while-revalidate or similar) —
       exact catalog/recipe-source caching integration comes later when
       `catalog` exists; this task lays the Serwist mechanism, not the final
       cache rules
-- [ ] `next.config.ts` wires `@serwist/next`'s plugin
-- [ ] `bun run build` produces a service worker output file
+- [x] `next.config.ts` wires `@serwist/next`'s plugin
+- [x] `bun run build` produces a service worker output file
 
 **Verification:**
-- [ ] `bun run build` succeeds and emits a service worker
-- [ ] Manual check: inspect the build output for the generated `sw.js`
+- [x] `bun run build` succeeds and emits a service worker
+- [x] Manual check: inspect the build output for the generated `sw.js`
 
 **Dependencies:** Task 2
 
@@ -280,9 +280,9 @@ plugin wired into `next.config.ts`, and a minimal icon set.
 ---
 
 ## Checkpoint: Parallel batch merged (after Tasks 3–7)
-- [ ] Each track's own tests pass in isolation
-- [ ] No file conflicts between tracks (disjoint file sets — verify with `git diff --stat` per branch/patch before merging)
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+- [x] Each track's own tests pass in isolation
+- [x] No file conflicts between tracks (disjoint file sets — confirmed via `git status` before staging)
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree (44/44 tests, `bun run build` also verified green)
 - [ ] **Human review before composition**
 
 ---

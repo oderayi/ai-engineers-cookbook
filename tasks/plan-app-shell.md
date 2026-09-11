@@ -65,18 +65,29 @@ into the actual `Shell` last, wire up `app/layout.tsx` against fixture data
 - [ ] Human review before the parallel batch
 
 ### Phase 1: Parallel batch — 5 independent tracks
-- [ ] Task 3 **[PARALLEL]**: Presentational primitives (collapsible-section,
+- [x] Task 3 **[PARALLEL]**: Presentational primitives (collapsible-section,
       empty-state, skeleton, toaster)
-- [ ] Task 4 **[PARALLEL]**: Theming (`next-themes`, no-flash script, theme-toggle)
-- [ ] Task 5 **[PARALLEL]**: `sidebar-nav.tsx` + `tests/fixtures/nav-tree.ts`
-- [ ] Task 6 **[PARALLEL]**: `topbar.tsx` + `mobile-drawer.tsx`
-- [ ] Task 7 **[PARALLEL]**: PWA (`manifest.ts`, `sw.ts`, Serwist wiring, icons)
+- [x] Task 4 **[PARALLEL]**: Theming (`next-themes`, no-flash script, theme-toggle)
+- [x] Task 5 **[PARALLEL]**: `sidebar-nav.tsx` + `tests/fixtures/nav-tree.ts`
+- [x] Task 6 **[PARALLEL]**: `topbar.tsx` + `mobile-drawer.tsx`
+- [x] Task 7 **[PARALLEL]**: PWA (`manifest.ts`, `sw.ts`, Serwist wiring, icons)
+      — hit the flagged Turbopack/webpack conflict for real; resolved via
+      `next build --webpack` (dev stays on Turbopack)
 
 ### Checkpoint: Parallel batch merged
-- [ ] Each track's own unit tests pass in isolation
-- [ ] No file conflicts between tracks (disjoint file sets, verified by diff)
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+- [x] Each track's own unit tests pass in isolation
+- [x] No file conflicts between tracks (disjoint file sets, verified via `git status` before staging)
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree (44/44 tests; `bun run build` also green)
 - [ ] Human review before composition
+
+Two shared-config gaps surfaced independently by three of the five tracks
+(none were permitted to touch shared files) and were centralized during
+integration: `vitest.setup.ts` needed `afterEach(cleanup)` (Testing Library's
+auto-cleanup doesn't self-register with `globals: false`) and a
+`window.matchMedia` stub (jsdom has none; `next-themes`/`sonner` need it).
+Also added `public/sw.js` to `eslint.config.mjs`'s ignores and `.gitignore` —
+Serwist's generated bundle was being linted as source (85 false-positive
+warnings) and was about to be committed as a build artifact.
 
 ### Phase 2: Composition (sequential — depends on Phase 1)
 - [ ] Task 8: `sidebar.tsx` (composes nav + theme-toggle + drawer, collapse state)
