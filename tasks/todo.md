@@ -240,7 +240,7 @@ recipes read from.
 
 ## Phase 2: Discovery & source
 
-### Task 7: Recipe discovery
+### Task 7: [DONE] Recipe discovery
 
 **Description:** `discovery.py` scans a recipes root (an injectable path, so
 tests point at `tests/fixtures/recipes/`, production points at `recipes/`),
@@ -249,16 +249,16 @@ builds an ordered, in-memory registry keyed by slug — **without importing any
 Python**.
 
 **Acceptance criteria:**
-- [ ] Registry is ordered by `(group.order, recipe.order)`
-- [ ] A duplicate `slug` across two recipe directories raises a clear
+- [x] Registry is ordered by `(group.order, recipe.order)`
+- [x] A duplicate `slug` across two recipe directories raises a clear
       `DiscoveryError` naming both directories
-- [ ] A recipe directory name that doesn't match its own `recipe.toml` `slug`
+- [x] A recipe directory name that doesn't match its own `recipe.toml` `slug`
       raises a clear `DiscoveryError`
-- [ ] Discovering the fixtures from Task 3 never triggers a Python import
+- [x] Discovering the fixtures from Task 3 never triggers a Python import
       (verified with a monkeypatched `importlib` that raises if called)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_discovery.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_discovery.py`
 
 **Dependencies:** Task 1
 
@@ -272,7 +272,7 @@ the test file, not under the shared `tests/fixtures/recipes/`)
 
 ---
 
-### Task 8: Source reader & hashing
+### Task 8: [DONE] Source reader & hashing
 
 **Description:** `source.py` — given a discovered recipe's directory, enumerate
 its `recipe.py` plus sibling `.py` helper files (`echo-with-helper`'s `helpers.py`
@@ -281,15 +281,15 @@ return the `SourceBundle` shape (`path, language, text, sha256` per file, plus
 the bundle hash) documented in the spec's API section.
 
 **Acceptance criteria:**
-- [ ] `echo`'s bundle has exactly one file; `echo-with-helper`'s has exactly two
+- [x] `echo`'s bundle has exactly one file; `echo-with-helper`'s has exactly two
       (`recipe.py`, `helpers.py`), both included
-- [ ] `language` is derived from file extension (`python` for `.py`)
-- [ ] Re-reading the same recipe twice produces identical hashes (determinism);
+- [x] `language` is derived from file extension (`python` for `.py`)
+- [x] Re-reading the same recipe twice produces identical hashes (determinism);
       changing one byte in the fixture changes only that file's hash and the
       bundle hash, not the other file's hash
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_source.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_source.py`
 
 **Dependencies:** Task 7
 
@@ -302,10 +302,10 @@ the bundle hash) documented in the spec's API section.
 ---
 
 ## Checkpoint B: Discovery & source (after Tasks 7–8)
-- [ ] Discovery + source tests pass against both fixture recipes
-- [ ] Duplicate-slug and dir-name/slug-mismatch detection each have a dedicated
+- [x] Discovery + source tests pass against both fixture recipes
+- [x] Duplicate-slug and dir-name/slug-mismatch detection each have a dedicated
       passing test
-- [ ] Still zero Python-import-of-recipe-code anywhere in the suite so far
+- [x] Still zero Python-import-of-recipe-code anywhere in the suite so far
 
 ---
 

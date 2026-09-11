@@ -57,12 +57,12 @@ their own mini-specs later.
 - [ ] Human review before Phase 2
 
 ### Phase 2: Discovery & source
-- [ ] Task 7: Recipe discovery
-- [ ] Task 8: Source reader & hashing
+- [x] Task 7: Recipe discovery
+- [x] Task 8: Source reader & hashing
 
 ### Checkpoint B — Discovery & source
-- [ ] Discovery + source tests pass against both fixture recipes
-- [ ] Duplicate-slug and dir-name/slug-mismatch detection verified
+- [x] Discovery + source tests pass against both fixture recipes
+- [x] Duplicate-slug and dir-name/slug-mismatch detection verified
 
 ### Phase 3: Executor
 - [ ] Task 9: Recipe loading & contract validation
