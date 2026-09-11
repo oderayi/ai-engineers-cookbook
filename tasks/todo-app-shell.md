@@ -345,22 +345,22 @@ in main.
 
 ## Phase 3: Wiring (sequential)
 
-### Task 10: `app/layout.tsx` + `app/page.tsx` against fixtures
+### Task 10: [DONE] `app/layout.tsx` + `app/page.tsx` against fixtures
 
 **Description:** Wire everything together: `ThemeProvider` + no-flash script
 in the root layout, `Shell` mounted with the `nav-tree.ts` fixture and a
 placeholder main-content page (since `catalog` doesn't exist yet) in `page.tsx`.
 
 **Acceptance criteria:**
-- [ ] The app renders end-to-end with `bun run dev` — sidebar, topbar,
+- [x] The app renders end-to-end with `bun run dev` — sidebar, topbar,
       placeholder content, theme toggle all visible and interactive
-- [ ] No backend call anywhere in this path (success criterion 6)
-- [ ] Theme choice persists across a manual reload with no visible flash
+- [x] No backend call anywhere in this path (success criterion 6)
+- [x] Theme choice persists across a manual reload with no visible flash
 
 **Verification:**
-- [ ] Manual check: `bun run dev`, click through sidebar collapse, theme
+- [x] Manual check: `bun run dev`, click through sidebar collapse, theme
       toggle, mobile drawer at a narrow viewport
-- [ ] `bun run build && bun run start` also works (production build path)
+- [x] `bun run build && bun run start` also works (production build path)
 
 **Dependencies:** Task 9, Task 7 (PWA manifest linked from layout `<head>`)
 
@@ -372,23 +372,23 @@ placeholder main-content page (since `catalog` doesn't exist yet) in `page.tsx`.
 
 ---
 
-### Task 11: Responsive + keyboard/focus-ring pass
+### Task 11: [DONE] Responsive + keyboard/focus-ring pass
 
 **Description:** Systematic check (and any needed fixes) against the spec's
 explicit breakpoints and keyboard/focus requirements, since Phase 1's tracks
 were built somewhat in isolation from each other.
 
 **Acceptance criteria:**
-- [ ] Shell renders correctly at 375 / 768 / 1280 px (manual or
+- [x] Shell renders correctly at 375 / 768 / 1280 px (manual or
       Testing-Library viewport-mocked snapshot)
-- [ ] Sidebar is the persistent rail ≥ `md`, the drawer < `md`
-- [ ] Full keyboard traversal sidebar → topbar → main reaches every
+- [x] Sidebar is the persistent rail ≥ `md`, the drawer < `md`
+- [x] Full keyboard traversal sidebar → topbar → main reaches every
       interactive element with a visible focus ring
 
 **Verification:**
-- [ ] Manual check across the three breakpoints (resize devtools or
+- [x] Manual check across the three breakpoints (resize devtools or
       Playwright viewport, if Task 12 is done first — order is flexible)
-- [ ] Manual keyboard-only pass (Tab/Shift+Tab/Enter/Escape)
+- [x] Manual keyboard-only pass (Tab/Shift+Tab/Enter/Escape)
 
 **Dependencies:** Task 10
 

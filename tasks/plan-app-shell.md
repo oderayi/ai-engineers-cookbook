@@ -94,8 +94,10 @@ warnings) and was about to be committed as a build artifact.
 - [x] Task 9: `shell.tsx` (composes Sidebar + Topbar + main slot)
 
 ### Phase 3: Wiring (sequential)
-- [ ] Task 10: `app/layout.tsx` + `app/page.tsx` against fixture data
-- [ ] Task 11: Responsive + keyboard/focus-ring pass (375/768/1280, drawer under `md`)
+- [x] Task 10: `app/layout.tsx` + `app/page.tsx` against fixture data
+- [x] Task 11: Responsive + keyboard/focus-ring pass (375/768/1280, drawer under `md`)
+      — found and fixed a real WCAG 2.4.7 failure (shadcn Button had zero
+      visible focus indicator); see the commit for the full root-cause trail
 
 ### Phase 4: E2E & sign-off
 - [ ] Task 12: Playwright setup + `pwa-install` / `offline-browse` / `a11y` specs
