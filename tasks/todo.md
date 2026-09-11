@@ -311,7 +311,7 @@ the bundle hash) documented in the spec's API section.
 
 ## Phase 3: Executor
 
-### Task 9: Recipe loading & contract validation
+### Task 9: [DONE] Recipe loading & contract validation
 
 **Description:** `executor.load_recipe(recipe_dir, manifest)` — the one place
 that dynamically imports a recipe module, registering it so sibling relative
@@ -321,15 +321,15 @@ run(params, ctx)` with the right signature; raises a typed
 `RecipeContractError` naming exactly what's wrong otherwise.
 
 **Acceptance criteria:**
-- [ ] Both `echo` and `echo-with-helper` load successfully, including
+- [x] Both `echo` and `echo-with-helper` load successfully, including
       `echo-with-helper`'s relative import of `helpers.py`
-- [ ] A recipe module missing `Params`, missing `run`, or with a non-`async`
+- [x] A recipe module missing `Params`, missing `run`, or with a non-`async`
       `run` each raise a distinct, clearly-worded `RecipeContractError`
-- [ ] Loading the same recipe twice in one process doesn't crash (idempotent
+- [x] Loading the same recipe twice in one process doesn't crash (idempotent
       re-import / module-cache handling)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_executor_load.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_executor_load.py`
 
 **Dependencies:** Task 2, Task 7
 
@@ -342,7 +342,7 @@ warrant a couple of malformed-recipe fixtures alongside the two good ones)
 
 ---
 
-### Task 10: Execution loop
+### Task 10: [DONE] Execution loop
 
 **Description:** `executor.execute(recipe, params, ctx, *, timeout_s, max_bytes,
 max_events)` — an async generator that runs `recipe.run(params, ctx)` as a task,
@@ -351,20 +351,20 @@ timeout and the two caps, and guarantees exactly one terminal event
 (`result`/`error`) even if the recipe forgets one or raises.
 
 **Acceptance criteria:**
-- [ ] `echo` and `echo-with-helper` each run end-to-end, yielding events in the
+- [x] `echo` and `echo-with-helper` each run end-to-end, yielding events in the
       order emitted, terminated by exactly one `result`
-- [ ] A recipe that sleeps past `timeout_s` is cancelled and yields exactly one
+- [x] A recipe that sleeps past `timeout_s` is cancelled and yields exactly one
       terminal `error` with `error_type = "timeout"` — no further events after it
-- [ ] A recipe whose cumulative emitted-event bytes exceed `max_bytes` (or event
+- [x] A recipe whose cumulative emitted-event bytes exceed `max_bytes` (or event
       count exceeds `max_events`) is stopped with exactly one terminal `error`,
       `error_type = "output_limit"`
-- [ ] A recipe that raises an uncaught exception yields exactly one terminal
+- [x] A recipe that raises an uncaught exception yields exactly one terminal
       `error`, `error_type = "recipe_error"`, with the traceback logged
       server-side but **not** included in the event payload
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_executor_run.py`
-- [ ] Manual check: run a deliberately slow test recipe locally and confirm the
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_executor_run.py`
+- [x] Manual check: run a deliberately slow test recipe locally and confirm the
       process has no lingering task after the timeout fires (`asyncio.all_tasks()`
       count returns to baseline)
 
@@ -381,7 +381,7 @@ timeout and the two caps, and guarantees exactly one terminal event
 
 ---
 
-### Task 11: Isolation-swap guard test
+### Task 11: [DONE] Isolation-swap guard test
 
 **Description:** The test that proves adding a recipe requires zero changes
 under `src/skillet/` — success criterion 7. Writes a throwaway recipe directory
@@ -389,15 +389,15 @@ to a temp path at test time, points discovery at it, and runs it through the
 full discovery → load → execute pipeline.
 
 **Acceptance criteria:**
-- [ ] The temp recipe is written entirely inside the test function (not checked
+- [x] The temp recipe is written entirely inside the test function (not checked
       into `tests/fixtures/`) and is discovered, loaded, and executed
       successfully using only Tasks 7/9/10's public functions
-- [ ] The test asserts (via `git diff` or an equivalent check, or simply by
+- [x] The test asserts (via `git diff` or an equivalent check, or simply by
       construction — importing no new `src/skillet` symbols) that nothing under
       `src/skillet/` needed to change to support it
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/recipe/test_isolation_swap.py`
+- [x] Tests pass: `cd backend && uv run pytest tests/recipe/test_isolation_swap.py`
 
 **Dependencies:** Task 7, Task 10
 
@@ -409,11 +409,11 @@ full discovery → load → execute pipeline.
 ---
 
 ## Checkpoint C: Executor (after Tasks 9–11)
-- [ ] Both fixture recipes run end-to-end through `execute()` with correct
+- [x] Both fixture recipes run end-to-end through `execute()` with correct
       event ordering
-- [ ] Timeout, output-cap, and recipe-exception paths each have a dedicated
+- [x] Timeout, output-cap, and recipe-exception paths each have a dedicated
       passing test with the right `error_type`
-- [ ] No lingering asyncio tasks after a timeout (checked manually or via a
+- [x] No lingering asyncio tasks after a timeout (checked manually or via a
       test using `asyncio.all_tasks()`)
 - [ ] **Human review before Phase 4** (this is the point where the module
       becomes runnable end-to-end, before it's exposed over HTTP)

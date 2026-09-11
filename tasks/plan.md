@@ -65,14 +65,14 @@ their own mini-specs later.
 - [x] Duplicate-slug and dir-name/slug-mismatch detection verified
 
 ### Phase 3: Executor
-- [ ] Task 9: Recipe loading & contract validation
-- [ ] Task 10: Execution loop (timeout, caps, terminal-event guarantee)
-- [ ] Task 11: Isolation-swap guard test
+- [x] Task 9: Recipe loading & contract validation
+- [x] Task 10: Execution loop (timeout, caps, terminal-event guarantee)
+- [x] Task 11: Isolation-swap guard test
 
 ### Checkpoint C — Executor
-- [ ] Both fixture recipes run end-to-end through `execute()` with correct
+- [x] Both fixture recipes run end-to-end through `execute()` with correct
       event ordering
-- [ ] Timeout → single `error(timeout)`; cap breach → single `error(output_limit)`
+- [x] Timeout → single `error(timeout)`; cap breach → single `error(output_limit)`
 - [ ] Human review before exposing any of this over HTTP
 
 ### Phase 4: Read-only API
