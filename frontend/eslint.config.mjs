@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Serwist's generated service-worker bundle (public/sw.js) — fully
+    // regenerated per build, not source. Add swe-worker-*.js too if
+    // cacheOnNavigation is ever enabled.
+    "public/sw.js",
+    "public/swe-worker-*.js",
   ]),
 ]);
 

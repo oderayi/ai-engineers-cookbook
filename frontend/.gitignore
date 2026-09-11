@@ -20,6 +20,10 @@
 /.next/
 /out/
 
+# serwist — generated service worker bundle, regenerated per build
+/public/sw.js
+/public/swe-worker-*.js
+
 # production
 /build
 
