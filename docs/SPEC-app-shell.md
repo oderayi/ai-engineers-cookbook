@@ -37,8 +37,12 @@ backend.
 
 ## Confirmed decisions
 
-1. Next.js **15** App Router, React **19**, TypeScript, Tailwind **v4**,
-   shadcn/ui.
+1. Next.js **16** App Router, React **19**, TypeScript, Tailwind **v4**,
+   shadcn/ui. (Originally specified as Next 15; bumped to the current stable
+   major during Task 0 rather than force-pinning an outdated one — see
+   `tasks/plan-app-shell.md`'s note on this. App Router layout/page
+   fundamentals are unchanged; Turbopack is now the default bundler for both
+   `dev` and `build`, which matters for Task 7's Serwist integration.)
 2. **Desktop-first**, responsive down to mobile (PWA installs on phones; sidebar
    becomes a drawer under `md`).
 3. The shell owns the frame and exposes **slots**; `workspace` fills the top-bar
@@ -170,7 +174,7 @@ export function Shell({ nav, tabs, children }: ShellProps) {
       <div className="flex min-w-0 flex-col">
         <Topbar>{tabs}</Topbar>
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[var(--content-max)] px-[var(--space-gutter)] py-8">
+          <div className="mx-auto w-full max-w-(--content-max) px-(--space-gutter) py-8">
             {children}
           </div>
         </main>
