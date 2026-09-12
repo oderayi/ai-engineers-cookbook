@@ -399,27 +399,35 @@ prop interface exactly right.** Per `SPEC-catalog.md`'s `RunForm` code
 sample, it is mounted as `<RecipeOverrides recipe={recipe} />`.
 
 **Acceptance criteria:**
-- [ ] `RecipeOverrides` accepts `{ recipe: { slug: string; env: RecipeEnvDecl[] } }`
+- [x] `RecipeOverrides` accepts `{ recipe: { slug: string; env: RecipeEnvDecl[] } }`
       (structurally satisfied by catalog's future richer `RecipeDetail` without
       any adapter) — no other required props
-- [ ] Renders one row per entry in `recipe.env`, using `useResolvedConfig`
+- [x] Renders one row per entry in `recipe.env`, using `useResolvedConfig`
       internally to get each field's current value/source
-- [ ] `inheritance-badge.tsx`: a small badge component — "Inherited from
+- [x] `inheritance-badge.tsx`: a small badge component — "Inherited from
       global" (source `"global"`), "Overridden" (source `"override"`), "Not
       set" (source `"unset"`, styled distinctly when `required: true`)
-- [ ] With a global key set and no override: shows "Inherited from global",
-      field placeholder reflects the (masked) global value
-- [ ] Typing an override flips the badge to "Overridden" and reveals a "reset
+- [x] With a global key set and no override: shows "Inherited from global",
+      field placeholder reflects the (masked) global value (a fixed-width
+      mask, not length-preserving — the actual secret's length is itself
+      information the placeholder shouldn't leak)
+- [x] Typing an override flips the badge to "Overridden" and reveals a "reset
       to global" affordance; clicking it clears the override and the badge
       returns to "Inherited from global" (or "Not set" if no global exists)
-- [ ] A declared key with neither override nor global shows "Not set"
+- [x] A declared key with neither override nor global shows "Not set"
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test recipe-overrides`
-- [ ] `bun run typecheck && bun run lint`
-- [ ] Manual check: the exported prop type is copy-pasteable into a scratch
-      file alongside a fixture shaped like `SPEC-catalog.md`'s `RecipeDetail`
-      and type-checks with no cast
+- [x] Tests pass: `cd frontend && bun run test recipe-overrides` (9/9)
+- [x] `bun run typecheck && bun run lint`
+- [x] Manual check done as a compile-time-only assertion inside the test file
+      itself (a local `RecipeDetail`-shaped interface assigned to
+      `RecipeOverridesProps["recipe"]` with no cast) rather than a separate
+      scratch file, so `bun run typecheck` checks it on every run instead of
+      needing a one-off manual step — confirmed passing
+
+Implemented directly rather than delegated to a subagent, given the
+"critical cross-module deliverable" callout above; Task 11 ran in parallel
+as a subagent instead.
 
 **Dependencies:** Tasks 0, 1, 6
 
@@ -438,17 +446,17 @@ sample, it is mounted as `<RecipeOverrides recipe={recipe} />`.
 components with `useSettings()`. Mounted in `app-shell`'s main slot (Task 12).
 
 **Acceptance criteria:**
-- [ ] Renders a `ProviderKeyField` per entry in `providers.ts` (starting with
+- [x] Renders a `ProviderKeyField` per entry in `providers.ts` (starting with
       `OPENAI_API_KEY`), the `BackendUrlField`, the `KeysSafetyNote`, and the
       `ClearAllButton` wired to `useSettings().clearAll`
-- [ ] Changes to any field persist through `useSettings`'s actions (verified
+- [x] Changes to any field persist through `useSettings`'s actions (verified
       via a round-trip test: change a field, re-mount, see the new value)
-- [ ] Renders correctly with an empty settings store (no keys set) — the
+- [x] Renders correctly with an empty settings store (no keys set) — the
       empty state is not an error or a blocking screen
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test settings-screen`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test settings-screen` (6/6)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 5, 7, 8, 9
 
@@ -461,8 +469,9 @@ components with `useSettings()`. Mounted in `app-shell`'s main slot (Task 12).
 ---
 
 ## Checkpoint: Composition complete (after Tasks 10–11)
-- [ ] Both tracks' tests pass; no file conflicts
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+- [x] Both tracks' tests pass; no file conflicts
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged
+      tree (28 files, 188/188 tests)
 
 ---
 
