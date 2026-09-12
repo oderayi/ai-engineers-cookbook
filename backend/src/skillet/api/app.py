@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from skillet.api.recipes import router as recipes_router
+from skillet.api.run import router as run_router
 
 DEFAULT_RECIPES_ROOT = Path(__file__).resolve().parents[3] / "recipes"
 
@@ -32,11 +33,14 @@ def create_app(recipes_root: Path | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_methods=["GET"],
+        # `execution`'s POST /recipes/{slug}/run needs POST in addition to
+        # the read-only GETs above.
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
     app.include_router(recipes_router)
+    app.include_router(run_router)
     return app
 
 
