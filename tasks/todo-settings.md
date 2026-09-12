@@ -483,17 +483,20 @@ components with `useSettings()`. Mounted in `app-shell`'s main slot (Task 12).
 `app-shell` layout (which already wraps every route in `<Shell>`).
 
 **Acceptance criteria:**
-- [ ] `app/settings/page.tsx` renders `<SettingsScreen />`
-- [ ] `bun run dev`, navigate to `/settings`: the shell (sidebar, topbar) still
+- [x] `app/settings/page.tsx` renders `<SettingsScreen />`
+- [x] `bun run dev`, navigate to `/settings`: the shell (sidebar, topbar) still
       renders around it, exactly like `/` does
-- [ ] Enter a key, reload the page, the key is still there (masked) — a real
+- [x] Enter a key, reload the page, the key is still there (masked) — a real
       manual round-trip, not just the unit test's simulated one
 
 **Verification:**
-- [ ] `cd frontend && bun run build` succeeds
-- [ ] Manual check as described above, via a real running server (verify no
+- [x] `cd frontend && bun run build` succeeds
+- [x] Manual check as described above, via a real running server (verify no
       stale process is already bound to port 3000 first — `lsof -ti:3000` —
-      per the lesson from app-shell Task 12)
+      per the lesson from app-shell Task 12) — done via `bun run build && bun
+      run start` + Playwright, confirmed no stale process first; key survived
+      a real full-page reload, masked (`type="password"`), well-formed blob
+      in `localStorage`
 
 **Dependencies:** Task 11
 
@@ -510,17 +513,18 @@ components with `useSettings()`. Mounted in `app-shell`'s main slot (Task 12).
 to the test(s) that verify it, and confirm the coverage bar.
 
 **Acceptance criteria:**
-- [ ] A sign-off table (in `tasks/plan-settings.md`, matching the precedent
+- [x] A sign-off table (in `tasks/plan-settings.md`, matching the precedent
       from `recipe-framework` and `app-shell`) lists all 8 criteria against
       their verification
-- [ ] `resolve.ts`, `storage.ts`, `migrations.ts` each individually report
-      ≥95% line coverage (`bun run test --coverage` or equivalent — confirm
-      the exact coverage command/config first, since this hasn't been used
-      elsewhere in `frontend/` yet)
-- [ ] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test` all green
+- [x] `resolve.ts`, `storage.ts`, `migrations.ts` each individually report
+      ≥95% line coverage — all three measured at **100%** line coverage via
+      `bun run test:coverage` (new script; `@vitest/coverage-v8` installed,
+      config added to `vitest.config.ts` — neither existed in `frontend/`
+      before this task)
+- [x] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test` all green
 
 **Verification:**
-- [ ] Full command suite above, run once at the end
+- [x] Full command suite above, run once at the end
 
 **Dependencies:** Tasks 0–12
 
@@ -533,7 +537,9 @@ to the test(s) that verify it, and confirm the coverage bar.
 ---
 
 ## Checkpoint: Module complete (after Task 13)
-- [ ] All 8 success criteria individually verified
-- [ ] `resolve.ts`, `storage.ts`, `migrations.ts` each ≥ 95% line coverage
-- [ ] Full suite + lint + typecheck + build green
+- [x] All 8 success criteria individually verified (see sign-off table in
+      `tasks/plan-settings.md`)
+- [x] `resolve.ts`, `storage.ts`, `migrations.ts` each ≥ 95% line coverage
+      (100% each)
+- [x] Full suite + lint + typecheck + build green (28 files, 188/188 tests)
 - [ ] **Human review before `catalog` begins consuming `RecipeOverrides`**
