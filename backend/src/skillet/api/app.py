@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from skillet.api.recipes import router as recipes_router
 from skillet.api.run import router as run_router
+from skillet.execution.keys import install_redacting_filter
 
 DEFAULT_RECIPES_ROOT = Path(__file__).resolve().parents[3] / "recipes"
 
@@ -25,6 +26,10 @@ DEFAULT_CORS_ORIGINS = "http://localhost:3000"
 
 
 def create_app(recipes_root: Path | None = None) -> FastAPI:
+    # Idempotent (see its own docstring) — safe even though every test in
+    # this backend's own suite calls create_app() repeatedly.
+    install_redacting_filter()
+
     app = FastAPI(title="Skillet")
     app.state.recipes_root = recipes_root or DEFAULT_RECIPES_ROOT
 

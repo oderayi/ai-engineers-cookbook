@@ -176,3 +176,57 @@ def test_redaction_context_resets_after_block_exits(caplog) -> None:
     # but the key-shaped heuristic still catches this since it looks like a
     # token regardless of any bound config.
     assert secret not in caplog.text
+
+
+def test_redacting_filter_scrubs_exception_traceback_not_just_the_message(caplog) -> None:
+    """Regression test: `record.msg`/`.args` redaction alone does NOT touch
+    an attached exception traceback — `logging.Formatter` renders that from
+    `record.exc_info`/`record.exc_text` entirely separately from the
+    message. `logger.exception(...)` (used by
+    `skillet.recipe.executor` on a recipe's uncaught exception) is exactly
+    the call whose traceback can carry a raised, unredacted secret — a real
+    leak this filter used to miss (caught by
+    `tests/execution/test_key_hygiene.py`, fixed here).
+    """
+    logger = logging.getLogger("skillet.execution.test_keys.traceback")
+    logger.addFilter(RedactingFilter())
+    caplog.set_level(logging.ERROR, logger=logger.name)
+
+    secret = "sk-traceback-leak-should-be-redacted-999888777"
+    with redaction_context({"OPENAI_API_KEY": secret}):
+        try:
+            raise RuntimeError(f"upstream rejected key {secret}")
+        except RuntimeError:
+            logger.exception("recipe raised during execution")
+
+    assert secret not in caplog.text
+    assert "recipe raised during execution" in caplog.text  # the message itself is untouched
+    assert "RuntimeError" in caplog.text  # the traceback is still present, just redacted
+
+
+def test_install_redacting_filter_is_idempotent_and_targets_real_loggers() -> None:
+    from skillet.execution.keys import install_redacting_filter
+
+    logger = logging.getLogger("skillet.execution.test_keys.install")
+    install_redacting_filter([logger.name])
+    install_redacting_filter([logger.name])  # calling twice must not double-attach
+
+    matching = [f for f in logger.filters if isinstance(f, RedactingFilter)]
+    assert len(matching) == 1
+
+
+def test_redact_key_shaped_patterns_empty_string_is_a_noop() -> None:
+    assert redact_key_shaped_patterns("") == ""
+
+
+def test_redacting_filter_scrubs_stack_info(caplog) -> None:
+    logger = logging.getLogger("skillet.execution.test_keys.stack_info")
+    logger.addFilter(RedactingFilter())
+    caplog.set_level(logging.INFO, logger=logger.name)
+
+    secret = "sk-stack-info-leak-should-be-redacted-11223344"
+    with redaction_context({"KEY": secret}):
+        logger.info("state snapshot for %s", secret, stack_info=True)
+
+    assert secret not in caplog.text
+    assert "state snapshot for" in caplog.text

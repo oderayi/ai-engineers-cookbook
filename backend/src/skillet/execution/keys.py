@@ -30,14 +30,15 @@ Public API
     variable, so it's correct across ``asyncio`` tasks without a request
     object needing to reach every log call site.
 
-``RedactingFilter``
+``RedactingFilter`` / ``install_redacting_filter()``
     A ``logging.Filter`` that reads the currently-bound config (via
     ``redaction_context``) and scrubs it from every log record's message
-    before it's emitted. Attach it once (e.g. to the root logger, or to
-    ``skillet``'s own logger) in Task 8's endpoint setup — every log line
-    produced during a run's ``with redaction_context(config):`` block is
-    then redacted automatically, without every call site needing to
-    remember to call ``redact()`` itself.
+    before it's emitted. ``install_redacting_filter()`` attaches one to
+    every logger `skillet` defines (called once from `create_app()`) —
+    every log line produced during a run's ``with
+    redaction_context(config):`` block is then redacted automatically,
+    without every call site needing to remember to call ``redact()``
+    itself.
 
 ``redact_key_shaped_patterns(text, *, placeholder=DEFAULT_PLACEHOLDER) -> str``
     Defense-in-depth: redact strings that merely *look* like API keys/tokens
@@ -100,7 +101,7 @@ for.
 import contextvars
 import logging
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 
 DEFAULT_PLACEHOLDER = "***REDACTED***"
@@ -202,24 +203,89 @@ class RedactingFilter(logging.Filter):
     ``redact_key_shaped_patterns`` — from every log record's message before
     it's emitted.
 
-    Attach an instance to a logger or handler once (e.g. the root logger, or
-    ``logging.getLogger("skillet")``) at process start; it is a no-op
-    outside of a ``redaction_context`` block (no config bound → nothing to
-    redact against, though the key-shaped heuristic still applies
-    regardless, since it doesn't depend on any bound config).
+    **Attach this to the specific ``Logger`` object that creates the records
+    you want redacted — NOT to a shared ancestor** (e.g. the root logger, or
+    ``logging.getLogger("skillet")``), and not to a ``Handler`` either.
+    Confirmed empirically: a filter on ``Logger.filters`` is only consulted
+    for records created by calling a method (``.info()``, ``.exception()``,
+    ...) directly on *that* logger object — it is never consulted for a
+    child logger's records, even though child loggers propagate their
+    records up through ancestor *handlers*. (A filter on a ``Handler``
+    *would* see propagated child records — but which handler(s) exist, if
+    any, is outside this module's control in a self-hosted deployment, so
+    attaching directly to each logger this backend defines is the reliable
+    option.) See ``install_redacting_filter`` below, which does this for
+    every logger `skillet` currently defines.
+
+    It is a no-op outside of a ``redaction_context`` block (no config bound
+    → nothing to redact against), though the key-shaped heuristic still
+    applies regardless, since it doesn't depend on any bound config.
 
     Rewrites ``record.msg`` to the fully-formatted, redacted message and
     clears ``record.args`` — logging formats ``msg % args`` lazily, and
     redacting only ``record.msg`` while leaving ``record.args`` in place
     would let a secret passed as a ``%s`` argument survive untouched.
+
+    Also redacts an attached exception traceback (``record.exc_info``, from
+    e.g. ``logger.exception(...)``) and any captured stack trace
+    (``record.stack_info``). This is not optional, hypothetical coverage:
+    `skillet.recipe.executor`'s own ``logger.exception("recipe raised
+    during execution")`` on a recipe's uncaught exception is exactly the
+    call that a raised, unredacted secret (e.g. an upstream API error
+    echoing back the key it was called with) reaches — proven empirically
+    by a real leak this filter used to miss, caught by
+    ``tests/execution/test_key_hygiene.py`` (see that module's own
+    docstring). ``record.msg``/``.args`` redaction alone does not touch
+    ``exc_info`` at all: `logging.Formatter.format()` renders the traceback
+    from ``record.exc_text`` (caching it from ``exc_info`` the first time),
+    entirely separately from the message. Pre-computing a redacted
+    ``exc_text`` here means the formatter's own
+    ``if not record.exc_text: record.exc_text = ...`` never fires — it uses
+    ours.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        message = record.getMessage()
         config = _current_config.get() or {}
+
+        message = record.getMessage()
         if config:
             message = redact(message, config)
-        message = redact_key_shaped_patterns(message)
-        record.msg = message
+        record.msg = redact_key_shaped_patterns(message)
         record.args = ()
+
+        if record.exc_info:
+            exc_text = record.exc_text or logging.Formatter().formatException(record.exc_info)
+            if config:
+                exc_text = redact(exc_text, config)
+            record.exc_text = redact_key_shaped_patterns(exc_text)
+
+        if record.stack_info:
+            stack_text = record.stack_info
+            if config:
+                stack_text = redact(stack_text, config)
+            record.stack_info = redact_key_shaped_patterns(stack_text)
+
         return True
+
+
+# Every module under `skillet` that calls `logging.getLogger(__name__)`.
+# Add a new module's logger name here when it starts logging — per
+# `RedactingFilter`'s docstring, attachment doesn't inherit through the
+# logger hierarchy, so each one needs to be named explicitly.
+_SKILLET_LOGGER_NAMES = ("skillet.recipe.executor", "skillet.recipe.emitter")
+
+
+def install_redacting_filter(logger_names: Iterable[str] = _SKILLET_LOGGER_NAMES) -> None:
+    """Attach a `RedactingFilter` to each named logger, if it doesn't
+    already have one.
+
+    Idempotent by design: `logging.getLogger(name)` returns the same
+    process-wide `Logger` singleton every time, and `create_app()` (which
+    calls this) runs once per `TestClient` in this backend's own test
+    suite — without the `isinstance` guard, repeated calls would pile up a
+    new redundant filter on the same logger on every call.
+    """
+    for name in logger_names:
+        logger = logging.getLogger(name)
+        if not any(isinstance(f, RedactingFilter) for f in logger.filters):
+            logger.addFilter(RedactingFilter())
