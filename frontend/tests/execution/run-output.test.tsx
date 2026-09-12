@@ -204,4 +204,28 @@ describe("RunOutputView", () => {
 
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
   });
+
+  it("shows a working Cancel button while running, when onCancel is provided", () => {
+    const onCancel = vi.fn();
+    render(
+      <RunOutputView status="running" events={[]} result={null} error={null} onCancel={onCancel} />
+    );
+
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    cancelButton.click();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("shows no Cancel button when onCancel is not provided, or once the run has ended", () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <RunOutputView status="running" events={[]} result={null} error={null} />
+    );
+    expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
+
+    rerender(
+      <RunOutputView status="done" events={[]} result={null} error={null} onCancel={onCancel} />
+    );
+    expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
+  });
 });

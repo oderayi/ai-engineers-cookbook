@@ -13,6 +13,7 @@ import { RunError } from "@/components/execution/run-error";
 import { StepTimeline } from "@/components/execution/step-timeline";
 import { ToolCallCard } from "@/components/execution/tool-call-card";
 import { TokenPane } from "@/components/execution/token-pane";
+import { Button } from "@/components/ui/button";
 import { useRecipeRun, type RunFailure, type RunStatus } from "@/hooks/use-recipe-run";
 import type {
   ArtifactEvent,
@@ -54,6 +55,15 @@ export interface RunOutputViewProps {
   error: RunFailure | null;
   /** Present only for a retryable failure -- see `RunOutput`'s own doc comment. */
   onRetry?: () => void;
+  /**
+   * Present while a run can actually be cancelled (`RunOutput` passes this
+   * only for `status === "running"`) -- renders a visible Cancel button.
+   * The one real, user-facing cancel affordance in the app: `RunOutputHandle
+   * .cancel()` itself is otherwise only reachable via a ref (`workspace`'s
+   * future tab-close use case), with no button anywhere a person could
+   * click during an ordinary run without this.
+   */
+  onCancel?: () => void;
   className?: string;
 }
 
@@ -82,7 +92,15 @@ export interface RunOutputViewProps {
  * (whatever streamed before the failure) is never cleared just because the
  * run ended in an error (Open Question 2's leaning).
  */
-function RunOutputView({ status, events, result, error, onRetry, className }: RunOutputViewProps) {
+function RunOutputView({
+  status,
+  events,
+  result,
+  error,
+  onRetry,
+  onCancel,
+  className,
+}: RunOutputViewProps) {
   const steps = events.filter((event): event is StepEvent => event.type === "step");
   const toolCalls = events.filter((event): event is ToolCallEvent => event.type === "tool_call");
   const artifacts = events.filter((event): event is ArtifactEvent => event.type === "artifact");
@@ -122,10 +140,19 @@ function RunOutputView({ status, events, result, error, onRetry, className }: Ru
 
       {logs.length > 0 && <LogStream events={logs} />}
 
-      {status === "running" && !hasPartialOutput && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-          Running…
+      {status === "running" && (
+        <div className="flex items-center gap-3">
+          {!hasPartialOutput && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              Running…
+            </div>
+          )}
+          {onCancel && (
+            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
         </div>
       )}
 
@@ -205,6 +232,7 @@ export const RunOutput = forwardRef<RunOutputHandle, RunOutputProps>(function Ru
   }, [start]);
 
   const onRetry = error?.kind === "transport" ? handleRetry : undefined;
+  const onCancel = status === "running" ? cancel : undefined;
 
   return (
     <RunOutputView
@@ -213,6 +241,7 @@ export const RunOutput = forwardRef<RunOutputHandle, RunOutputProps>(function Ru
       result={result}
       error={error}
       onRetry={onRetry}
+      onCancel={onCancel}
       className={className}
     />
   );

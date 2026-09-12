@@ -20,7 +20,10 @@ def test_list_recipes_shape_and_ordering() -> None:
     body = resp.json()
 
     slugs = [r["slug"] for r in body]
-    assert slugs == ["echo", "echo-with-helper"]  # order 10 then 20 within demo group
+    # order 10, 20, 30 within the demo group -- "slow-echo" (execution's own
+    # E2E cancel-mid-run fixture) added at order 30, after this test was
+    # first written for just the two recipe-framework smoke-test recipes.
+    assert slugs == ["echo", "echo-with-helper", "slow-echo"]
 
     echo = body[0]
     assert echo["title"] == "Echo"
@@ -61,7 +64,7 @@ def test_list_recipes_never_imports_recipe_python(monkeypatch) -> None:
 
     resp = make_client().get("/recipes")
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    assert len(resp.json()) == 3  # echo, echo-with-helper, slow-echo
 
 
 def test_list_recipes_empty_root(tmp_path: Path) -> None:

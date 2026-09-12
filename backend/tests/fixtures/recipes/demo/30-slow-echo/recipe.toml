@@ -1,0 +1,14 @@
+[recipe]
+slug = "slow-echo"
+title = "Slow Echo"
+summary = "Echoes back your message after a short, deliberate delay."
+difficulty = "basic"
+order = 30
+estimated_runtime_seconds = 3
+
+use_cases = [
+  "execution's own E2E cancel-mid-run test — a real network round trip needs a recipe slow enough to reliably click Cancel while it's still running.",
+]
+
+[recipe.entrypoint]
+module = "recipe"

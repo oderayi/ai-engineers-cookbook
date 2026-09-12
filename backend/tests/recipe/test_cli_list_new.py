@@ -17,6 +17,7 @@ def test_list_matches_discovery_order(capsys) -> None:
     assert lines == [
         "demo/echo  (Echo)",
         "demo/echo-with-helper  (Echo with helper)",
+        "demo/slow-echo  (Slow Echo)",  # execution's own E2E cancel-mid-run fixture
     ]
 
 
