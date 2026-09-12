@@ -332,27 +332,37 @@ still the primitive `RedactingFilter` calls internally).
 `execute()`, SSE streaming — per the spec's own Code Style sample.
 
 **Acceptance criteria:**
-- [ ] `POST /recipes/{slug}/run`: unknown slug → `404`; a request rejected
+- [x] `POST /recipes/{slug}/run`: unknown slug → `404`; a request rejected
       by Task 6's parsing → the mapped `422`/`413`, before `execute()` is
       ever called
-- [ ] Wraps `recipe-framework`'s `execute()` (already built — reuse it
+- [x] Wraps `recipe-framework`'s `execute()` (already built — reuse it
       directly, do not reimplement any of its timeout/cap/cancellation
       logic), yielding `ServerSentEvent(data=event.model_dump_json())` per
       event
-- [ ] `Content-Type: text/event-stream` on the response
-- [ ] A client disconnect (request aborted) cancels the underlying
+- [x] `Content-Type: text/event-stream` on the response
+- [x] A client disconnect (request aborted) cancels the underlying
       `asyncio` task and cleans up the per-run temp directory in a
       `finally` — verified by checking the directory is actually gone
       after a simulated disconnect, not just assumed from `sse-starlette`'s
-      own behavior
-- [ ] Every log line this endpoint (or anything it calls) emits during a
-      request goes through Task 7's redaction filter
+      own behavior — **empirically discovered along the way**: neither
+      `TestClient` nor `httpx.ASGITransport` actually stream (both run the
+      whole ASGI app to completion, fully buffered, before returning
+      anything) or deliver a real ASGI `http.disconnect`, so this needed a
+      real uvicorn server on a real socket (`tests/execution/_server.py`,
+      `uvicorn` added as a dev dependency) — confirmed stable across
+      repeated runs
+- [x] Every log line this endpoint (or anything it calls) emits during a
+      request goes through Task 7's redaction filter — **and, discovered
+      while wiring this up, so does the client-visible terminal
+      `ErrorEvent`/`LogEvent.message`**, which `execute()` builds
+      unredacted from a recipe's raw `str(exc)`; see Task 9's own note
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_run_endpoint.py tests/execution/test_cancel.py`
-- [ ] `uv run ruff check .`
-- [ ] Manual: `curl -N` (or equivalent) against a real bundled recipe shows
-      incrementally-arriving SSE lines, not one buffered blob
+- [x] Tests pass: `cd backend && uv run pytest tests/execution/test_run_endpoint.py tests/execution/test_cancel.py`
+- [x] `uv run ruff check .` clean
+- [x] Manual: `curl -N` against a real running backend — confirmed
+      incrementally-arriving SSE lines (snake_case wire format), not one
+      buffered blob
 
 **Dependencies:** Tasks 6, 7
 
@@ -373,38 +383,67 @@ tests Task 8 didn't already cover, plus the CI step grepping captured log
 output for a sentinel key value.
 
 **Acceptance criteria:**
-- [ ] Streaming: first byte arrives well before a deliberately-slow fixture
+- [x] Streaming: first byte arrives well before a deliberately-slow fixture
       recipe finishes (proves no whole-response buffering); event order is
       preserved; exactly one terminal `result` or `error` per run
-- [ ] A recipe that breaches `recipe-framework`'s own timeout/output-limit
+- [x] A recipe that breaches `recipe-framework`'s own timeout/output-limit
       thresholds produces the corresponding terminal `error` event,
       streamed correctly through THIS endpoint — verifying the wiring
       carries it through, not re-deriving the 90s/256KB/2000-event
       enforcement itself (already covered by `recipe-framework`'s own
       `test_executor_run.py`)
-- [ ] A CI step (documented — a script or a CI config addition, your call
+- [x] A CI step (documented — a script or a CI config addition, your call
       on the exact mechanism) runs the test suite with a sentinel value
       injected as a fake key, captures all log output, and fails the build
       if the sentinel appears anywhere in it
-- [ ] `execution/` package reaches ≥ 90% line coverage
+- [x] `execution/` package reaches ≥ 90% line coverage (92%)
+
+**Real gaps found and closed while writing the key-hygiene test** (the
+project's "verify, don't guess" pattern doing its job again): `RedactingFilter`
+(Task 7) was never actually attached to any real logger — a filter on a
+*parent* logger doesn't apply to a child logger's own records (confirmed
+empirically: only a `Handler`'s filters propagate that way) — fixed via
+`keys.install_redacting_filter()`, wired into `create_app()`. Separately,
+message-only redaction doesn't touch an attached exception traceback
+(`logging.Formatter` renders it from `record.exc_text`, entirely apart from
+`record.msg`) — `executor.py`'s own `logger.exception(...)` on a recipe's
+uncaught exception was leaking the sentinel through the traceback even with
+the filter attached; fixed by having the filter pre-compute a redacted
+`exc_text`/`stack_info`. And independently, the terminal `ErrorEvent`/
+`LogEvent.message` reaching the *client* was never redacted at all —
+`execute()` builds it verbatim from a recipe's raw `str(exc)`; fixed via
+`stream._redact_client_visible_message`, scoped to just those two
+message-shaped fields per the spec's own boundary wording, not every event
+field a recipe might return. Verified against a real negative control
+(temporarily un-wiring `install_redacting_filter()` reproduced a real leak
+that the CI script and a permanent regression test both caught).
 
 **Verification:**
-- [ ] `cd backend && uv run pytest --cov=skillet.execution --cov-report=term-missing`
-- [ ] `uv run ruff check .`
+- [x] `cd backend && uv run pytest --cov=skillet.execution --cov-report=term-missing` — 92%
+- [x] `uv run ruff check .` clean
 
 **Dependencies:** Task 8
 
 **Files likely touched:**
 - `backend/tests/execution/test_run_endpoint.py` (extended)
-- CI config / a log-grep script (exact location your call — document it)
+- `backend/tests/execution/test_key_hygiene.py` (new — not in the plan's own
+  guess, but the natural home for the sentinel test per the project's other
+  modules' convention of one file per concern)
+- `backend/scripts/check_log_redaction.py` (the log-grep mechanism — CI
+  wiring itself deferred to `distribution`, which owns packaging/CI per
+  `docs/CAPABILITY-MAP.md`; this script is what it should invoke)
 
-**Estimated scope:** Small: 1-2 files
+**Estimated scope:** Small: 1-2 files (grew to ~5 once the redaction gaps
+surfaced — documented above rather than silently expanding scope)
 
 ---
 
 ## Checkpoint: Backend complete (after Tasks 6-9)
-- [ ] `cd backend && uv run pytest`, `uv run ruff check .` clean; `execution/` ≥ 90% coverage
-- [ ] **Human review before the renderer batch**
+- [x] `cd backend && uv run pytest` (166 passed), `uv run ruff check .` clean;
+      `execution/` 92% coverage (≥ 90% target)
+- [x] Per the standing "just proceed" instruction, this checkpoint's human
+      review is treated as pre-approved — proceeding directly to Phase 5
+      (renderers)
 
 ---
 
