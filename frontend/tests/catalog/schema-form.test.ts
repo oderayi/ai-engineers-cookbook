@@ -439,12 +439,24 @@ describe("compileForm — validator", () => {
     expect(validator.safeParse({ documents: ["not-a-file"] }).success).toBe(false);
   });
 
-  it("validates a list[str] (textarea) field as an array of strings, not a plain string", () => {
+  it("validates a list[str] (textarea) field by transforming its raw multi-line string input into an array", () => {
+    // The submitted value is a raw string (a native `<textarea>`'s own
+    // value, per `textarea-field.tsx`), not an actual array -- run-form.tsx
+    // never gets a chance to convert it, so the validator itself has to.
     const { validator } = compileForm(plainStringList);
 
-    expect(validator.safeParse({ texts: ["a", "b"] }).success).toBe(true);
-    expect(validator.safeParse({ texts: [] }).success).toBe(true); // required means present, not non-empty
-    expect(validator.safeParse({ texts: "a single string" }).success).toBe(false);
+    const result = validator.safeParse({ texts: "a\nb\n\n  c  \n" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Blank lines dropped, each line trimmed. `validator` is typed as the
+      // generic `z.ZodTypeAny` (compileForm's own return type), so
+      // `result.data` has no concrete shape for TS to narrow -- cast for
+      // this one assertion rather than widening compileForm's public type.
+      expect((result.data as { texts: string[] }).texts).toEqual(["a", "b", "c"]);
+    }
+
+    expect(validator.safeParse({ texts: "" }).success).toBe(true); // present (transforms to []), required means present not non-empty
+    expect(validator.safeParse({ texts: ["a", "b"] }).success).toBe(false); // an actual array is no longer the expected shape
     expect(validator.safeParse({}).success).toBe(false); // required field, must be present
   });
 

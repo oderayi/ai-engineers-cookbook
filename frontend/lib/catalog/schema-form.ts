@@ -240,7 +240,26 @@ function buildFieldValidator(field: FieldDescriptor, schema: JsonSchemaProperty)
       // schema), so this still has to fall back to `z.string()` when the
       // underlying shape isn't the `list[str]` case `isStringArray` maps
       // here from.
-      base = schema.type === "array" ? z.array(z.string()) : z.string();
+      //
+      // For the `list[str]` case, the *submitted* value is a raw multi-line
+      // string (a native `<textarea>`'s own value — see
+      // `components/catalog/run-form/fields/textarea-field.tsx`, which is
+      // deliberately presentational and does none of this splitting itself),
+      // not an actual array — so this transforms the string into one before
+      // the rest of the pipeline (react-hook-form's values, the eventual
+      // `params` handed to `execution`) ever sees it. Blank lines are
+      // dropped; each line is trimmed.
+      base =
+        schema.type === "array"
+          ? z
+              .string()
+              .transform((value) =>
+                value
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter((line) => line.length > 0)
+              )
+          : z.string();
       break;
     case "select": {
       const options = field.options ?? [];
