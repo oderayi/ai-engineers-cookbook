@@ -170,27 +170,43 @@ against with no backend running.
 plus the `useBackendBaseUrl()` hook `catalog` deliberately left for this
 module to build (see plan's Architecture Decisions).
 
+**Deviation from the plan, documented at implementation time:** the 429
+contract's zod schema got its own small file (`lib/execution/rate-limit.ts`,
+not listed in the plan's "Files likely touched") — needed somewhere for
+`classifyFailure()` to validate `RunRequestError.body` against before
+routing to `kind: "rate_limit"`, and this module's own convention (`lib/
+execution/events.ts`) is "wire-contract shapes get a dedicated file," not
+an inline schema buried in the hook.
+
 **Acceptance criteria:**
-- [ ] `useBackendBaseUrl()`: `settings.customBackendUrl || NEXT_PUBLIC_BACKEND_URL default`
+- [x] `useBackendBaseUrl()`: `settings.customBackendUrl || NEXT_PUBLIC_BACKEND_URL default`
       — reads `useSettings()` (already built), matching the exact fallback
       logic the spec's own comment describes
-- [ ] `useRecipeRun(slug)` returns `{ status, events, result, error, start, cancel }`
-      (or your close equivalent — document any shape deviation)
-- [ ] `status` transitions `idle → running → done | error`, back to `idle`
-      on a fresh `start()` call (cancel-and-restart, per Open Question 5's
-      leaning)
-- [ ] `start(payload)` creates a fresh `AbortController`, iterates
+- [x] `useRecipeRun(slug)` returns `{ status, events, result, error, start, cancel }`
+      exactly
+- [x] `status` transitions `idle → running → done | error`, back to `idle`
+      on `cancel()` (not just a fresh `start()` — an explicit cancel needs
+      to visibly return to idle too, or a user-initiated stop would look
+      stuck in "running" forever); `start()` while already running aborts
+      the previous run first (cancel-and-restart)
+- [x] `start(payload)` creates a fresh `AbortController`, iterates
       `postRun(...)`, dispatching each event; `cancel()` aborts the current
-      controller
-- [ ] A transport-level failure (network error, non-2xx before any stream
-      started) is distinguished in `error` from an in-stream `ErrorEvent` —
-      both are real errors, but a `429` specifically must be identifiable
-      (so a later renderer task can route it to `<RateLimitNotice>` instead
-      of `<RunError>`)
+      controller — an abort-driven rejection is recognized via the
+      *locally captured* controller from that specific `start()` call, not
+      whatever `ctrl.current` points at when the rejection is observed, so
+      a fast cancel-then-restart can't misattribute the old run's abort to
+      the new one
+- [x] A transport-level failure is distinguished in `error.kind` from an
+      in-stream `ErrorEvent` (`"transport"` vs `"stream"`) — and a `429`
+      specifically gets its own `"rate_limit"` kind (validated against the
+      real contract shape), so a later renderer task can route it to
+      `<RateLimitNotice>` instead of `<RunError>`
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test hooks/use-recipe-run`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test hooks/use-recipe-run` (8/8,
+      plus 5/5 for the new `rate-limit.ts` schema and 3/3 for
+      `backend-url.ts`)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 4
 
@@ -204,7 +220,7 @@ module to build (see plan's Architecture Decisions).
 ---
 
 ## Checkpoint: Hook complete
-- [ ] `bun run test`, `typecheck`, `lint` clean
+- [x] `bun run test` (56 files, 464/464), `typecheck`, `lint` clean
 - [ ] **Human review before backend work**
 
 ---
