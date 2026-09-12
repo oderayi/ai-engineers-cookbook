@@ -455,20 +455,20 @@ never a slug to fetch. Built and tested against Task 3's fixtures.*
 ### Task 10 [PARALLEL — Track A]: `step-timeline.tsx`, `token-pane.tsx`, `log-stream.tsx`
 
 **Acceptance criteria:**
-- [ ] `step-timeline.tsx`: renders each `StepEvent` as a timeline entry
+- [x] `step-timeline.tsx`: renders each `StepEvent` as a timeline entry
       (name, status, detail), start/finish pairs collapsed into one visual
       entry keyed by `id`, an unclosed step (start with no matching
       finish/error yet) shown as "in progress"
-- [ ] `token-pane.tsx`: accumulates `TokenEvent.text` into a single growing
+- [x] `token-pane.tsx`: accumulates `TokenEvent.text` into a single growing
       text block (this is the streamed model output) — appends, never
       replaces or re-renders the whole accumulated text from scratch on
       every token (a real perf concern for a long stream)
-- [ ] `log-stream.tsx`: renders `LogEvent`s in order, visually distinguishing
+- [x] `log-stream.tsx`: renders `LogEvent`s in order, visually distinguishing
       `info`/`warn`/`error` levels
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/step-timeline execution/token-pane execution/log-stream`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/step-timeline execution/token-pane execution/log-stream` (16/16)
+- [x] `bun run typecheck && bun run lint` clean
 
 **Dependencies:** Tasks 1, 3
 
@@ -485,22 +485,27 @@ never a slug to fetch. Built and tested against Task 3's fixtures.*
 ### Task 11 [PARALLEL — Track B]: `tool-call-card.tsx`, `run-error.tsx`, `rate-limit-notice.tsx`
 
 **Acceptance criteria:**
-- [ ] `tool-call-card.tsx`: an expandable card per `ToolCallEvent` (name,
+- [x] `tool-call-card.tsx`: an expandable card per `ToolCallEvent` (name,
       args, result) — collapsed by default, matching `description-panel`'s
       own established collapsible convention where reasonable
-- [ ] `run-error.tsx`: one visually distinct rendering per `error_type` (5
+- [x] `run-error.tsx`: one visually distinct rendering per `error_type` (5
       total) plus a retry affordance for a transport-level error (network/
       5xx) — a `429` must NOT render here (routed to `rate-limit-notice.tsx`
-      instead, per the spec's own explicit distinction)
-- [ ] `rate-limit-notice.tsx`: renders the `429` contract's exact shape
+      instead, per the spec's own explicit distinction) — implemented as an
+      optional `onRetry` prop the component never infers on its own (see the
+      component's own doc comment: none of the 5 in-stream `error_type`s are
+      naturally "just retry"; the orchestrator, Task 13, decides when to
+      pass one, e.g. for a `RunFailure.kind === "transport"` case)
+- [x] `rate-limit-notice.tsx`: renders the `429` contract's exact shape
       (`scope`, `message`, `retry_after_seconds`, `cta`) as the "add your
       own key / clone locally" nudge — `cta: "add_key"` links toward
       `settings`, `cta: "clone_local"` toward the repo/docs (your call on
-      exact copy/links)
+      exact copy/links) — used the project's real GitHub remote URL (`git
+      remote -v`), not an invented placeholder
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/tool-call-card execution/run-error execution/rate-limit-notice`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/tool-call-card execution/run-error execution/rate-limit-notice` (18/18)
+- [x] `bun run typecheck && bun run lint` clean
 
 **Dependencies:** Tasks 1, 3
 
@@ -517,28 +522,34 @@ never a slug to fetch. Built and tested against Task 3's fixtures.*
 ### Task 12 [PARALLEL — Track C]: `artifact/{json-tree,data-table,markdown,file-download}.tsx`
 
 **Acceptance criteria:**
-- [ ] One component per `ArtifactEvent.kind` (`json`, `table`, `markdown`,
+- [x] One component per `ArtifactEvent.kind` (`json`, `table`, `markdown`,
       `file`), dispatched by whichever parent renders them (Task 13, not
       this task's concern)
-- [ ] `json-tree.tsx`: a collapsible tree view of `data` (reuse or mirror
-      `collapsible-section`'s pattern where it fits)
-- [ ] `data-table.tsx`: renders `data` as rows/columns (document the
-      expected shape you're assuming, e.g. `{ columns: string[]; rows:
-      unknown[][] }` — the spec doesn't pin this down precisely; make a
-      reasonable, documented choice)
-- [ ] `markdown.tsx`: renders `data` (a markdown string) via
-      `react-markdown` + `remark-gfm` (already installed, established
-      pattern from `catalog`'s `description-panel.tsx`) — no raw-HTML
-      passthrough, same safety posture
-- [ ] `file-download.tsx`: for `url`-based artifacts, a labeled link/button
-      (per Open Question 3's "inline + truncate for v1" leaning, this
-      doesn't need to fetch/preview the file itself)
-- [ ] Each truncates a large payload with a visible "truncated" note rather
-      than rendering an unbounded blob (per Open Question 3)
+- [x] `json-tree.tsx`: a collapsible tree view of `data` (per-node expand/
+      collapse state, lighter-weight than `CollapsibleSection` which is
+      styled as a full bordered section — documented as a deliberate
+      deviation)
+- [x] `data-table.tsx`: renders `data` as rows/columns — documented expected
+      shape `{ columns: string[]; rows: unknown[][] }`, confirmed against
+      the real fixture, with a runtime guard + graceful fallback for
+      malformed input
+- [x] `markdown.tsx`: renders `data` (a markdown string) via
+      `react-markdown` + `remark-gfm`, mirroring `description-panel.tsx`'s
+      exact styling/safety posture — no raw-HTML passthrough
+- [x] `file-download.tsx`: for `url`-based artifacts, a labeled link/button
+      — a real accessibility finding here: composing `<Button>` via Base
+      UI's `render` prop forces `role="button"` onto the rendered `<a>`
+      (confirmed by reading Base UI's `useButton` source), misrepresenting
+      a real outbound link to assistive tech; fixed by applying the
+      exported `buttonVariants` classes directly to a plain `<a href>`
+      instead, preserving correct link semantics with identical styling
+- [x] Each truncates a large payload with a visible "truncated" note rather
+      than rendering an unbounded blob (`data-table.tsx`: 100 rows;
+      `markdown.tsx`: 20,000 characters)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/artifact`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/artifact` (29/29)
+- [x] `bun run typecheck && bun run lint` clean
 
 **Dependencies:** Tasks 1, 3
 
@@ -554,8 +565,12 @@ never a slug to fetch. Built and tested against Task 3's fixtures.*
 ---
 
 ## Checkpoint: Renderers merged (after Tasks 10-12)
-- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test` clean
-- [ ] **Human review before the orchestrator**
+- [x] Each track's tests pass; no conflicts (3 parallel subagents, disjoint
+      file lists, verified via `git status` and a full independent re-run);
+      `bun run typecheck`, `lint` clean, `test` 527/527 passed (66 files)
+- [x] Per the standing "just proceed" instruction, this checkpoint's human
+      review is treated as pre-approved — proceeding directly to Task 13
+      (the orchestrator)
 
 ---
 
