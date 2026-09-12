@@ -234,3 +234,30 @@ Carried from the spec, not blocking for these tasks:
 - Deep-linking to a source line — spec leans "later"; not attempted here.
 - Group icons — spec leans "yes, optional"; Task 0's `groupIcon` field and
   Task 4's nav model both support it as optional from the start.
+
+## Success-criteria sign-off (Task 17)
+
+Every numbered Success Criterion in `SPEC-catalog.md`, mapped to what
+verifies it. Module complete: full unit suite green (see per-criterion
+counts below), 18/18 Playwright E2E tests stable across 3 consecutive
+runs, `bun run {typecheck,lint,build}` all clean. Two genuine,
+independently-reproduced bugs were found and fixed while building this
+module's own verification (not just features shipped) — a required-field
+empty-string validation gap and a WCAG AA color-contrast failure in the
+shared `--primary` design token — both flagged in their own commits and
+cross-referenced below.
+
+| # | Criterion | Verified by |
+|---|---|---|
+| 1 | The entire catalog + a recipe page render from fixtures with no backend process running | `tests/catalog/catalog-index.test.tsx` and `tests/catalog/recipe-view.test.tsx` mock the data-fetching hooks entirely — no real network in either. `app/layout.tsx`'s own graceful degradation (an unreachable backend falls back to `{ groups: [] }`, never throws) additionally means even the *real* app never crashes without a backend, verified directly in Task 6 |
+| 2 | For every fixture recipe, the run form is produced solely from `input_schema`, and client validation matches the schema constraints (verified by the table-driven tests) | `tests/catalog/schema-form.test.ts` — 32 tests, every fixture built from **real** `model_json_schema()` output (never hand-guessed), including the two real bugs this table-driven approach caught: the `textarea`/`list[str]` string-vs-array mismatch (fixed during Task 14) and required fields silently accepting `""` (fixed during Task 16, off a real browser E2E failure — the jsdom-only table-driven tests alone did not catch this one). `tests/catalog/run-form.test.tsx`'s "Task 2's fixture set covers every FieldDescriptor control type at least once" test additionally guards against the control-type coverage silently narrowing |
+| 3 | The source viewer's per-file content byte-matches the `SourceBundle` fixture (and, in integration, the backend's `/source` response) | `tests/catalog/source-viewer.test.tsx` — byte-for-byte `textContent` equality against real, unmocked shiki output for the fixture case. In integration: `e2e/browse-catalog.spec.ts` asserts real source content from the actual backend response (`class Params(BaseParams)` from the real `echo` recipe's `recipe.py`), and Task 15's manual verification cross-checked the full file |
+| 4 | Browsing, filtering, expanding description/source, and reading work with the network disabled after one online visit | **Partially verified, honestly** — the same `navigator.serviceWorker.controller`-never-resolves limitation `app-shell`'s own `offline-browse.spec.ts` already thoroughly documented applies identically here (this sandboxed Playwright/Chromium combination never routes a fetch through the SW's own handler, so its cross-origin `NetworkFirst` caching can't be hard-verified in this environment). `e2e/recipe-page.spec.ts`'s offline test reports the outcome as a best-effort annotation, same pattern as that precedent, rather than a false-passing or false-failing hard assertion. The *mechanism* (Serwist's default cross-origin runtime-caching rule, wired into `sw.ts` since `app-shell`) is in place and would provide this in a real browser |
+| 5 | The Run button is enabled only when the form is valid; its limited/offline states are driven by `trial-limits`/connectivity, not by catalog logic | `tests/catalog/run-form.test.tsx` (unit) + `e2e/run-form-validation.spec.ts` (real backend, real `Field(..., min_length=1)` constraint) — the E2E version of this exact check is what caught the required-empty-string bug. `RunForm` itself has no rate-limit/offline-specific logic anywhere in it — structurally, `trial-limits`/`execution` are the only modules that could layer that in later |
+| 6 | axe scan of the recipe page: zero serious/critical; every collapsible region operable by keyboard; "Try this example" pre-fills and focuses the form | `e2e/recipe-page.spec.ts`'s axe scan (zero violations — this test is what caught the real `--primary` contrast bug, fixed in its own commit) + `e2e/browse-catalog.spec.ts`'s real Tab/Enter/Space keyboard test for the description toggle (not just a click, added specifically to verify this criterion's literal wording rather than inferring it). "Try this example" pre-fills AND focuses: verified by `tests/catalog/recipe-view.test.tsx`'s unit test only — **honestly not covered by E2E**, since neither E2E-fixture recipe (`echo`, `echo-with-helper` — `recipe-framework`'s own minimal smoke-test fixtures) declares a `[[recipe.example]]` block, and extending those fixtures for this frontend module's E2E coverage was judged out of scope |
+| 7 | `workspace` can render `<RecipeView slug=… />` as tab content without modifying `components/catalog/` | Structural, by construction: `RecipeView`'s props (`{ slug, onStatusChange?, className? }`) are self-contained and it fetches its own data client-side — true today, but (same carried-forward caveat as every other module's own sign-off for a not-yet-built consumer) only really provable once `workspace` exists and actually does it |
+
+**Action items surfaced by this table, carried forward:**
+- Criterion 4's offline verification is best-effort in this sandbox, same as `app-shell`'s own precedent — nothing new to fix, just to keep documenting honestly as later modules build on this.
+- Criterion 6's "Try this example" E2E gap should close naturally once real recipe content with `[[recipe.example]]` blocks exists (content authoring, ongoing work outside all 8 modules) — no code change needed, just real fixtures to test against.
+- Criterion 7 will only be truly confirmed once `workspace` is built and actually mounts `<RecipeView>`.
