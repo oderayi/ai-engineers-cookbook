@@ -22,6 +22,31 @@ Public API
     e.g. an upstream API client echoing back the key it was called with) and
     run it through ``redact``.
 
+``redaction_context(config)`` (context manager)
+    Bind ``config`` as the *active run's* secrets for the duration of a
+    ``with`` block, for any code that can't have ``config`` threaded through
+    it directly (in particular, standard-library ``logging`` calls deep
+    inside a recipe or a library it calls). Backed by a ``contextvars``
+    variable, so it's correct across ``asyncio`` tasks without a request
+    object needing to reach every log call site.
+
+``RedactingFilter``
+    A ``logging.Filter`` that reads the currently-bound config (via
+    ``redaction_context``) and scrubs it from every log record's message
+    before it's emitted. Attach it once (e.g. to the root logger, or to
+    ``skillet``'s own logger) in Task 8's endpoint setup — every log line
+    produced during a run's ``with redaction_context(config):`` block is
+    then redacted automatically, without every call site needing to
+    remember to call ``redact()`` itself.
+
+``redact_key_shaped_patterns(text, *, placeholder=DEFAULT_PLACEHOLDER) -> str``
+    Defense-in-depth: redact strings that merely *look* like API keys/tokens
+    (long alphanumeric runs, common provider prefixes) even when they didn't
+    come from this run's own ``config`` — e.g. a secret hardcoded in a
+    third-party library's own error message. This is a heuristic, not a
+    guarantee; ``RedactingFilter`` applies it in addition to (not instead of)
+    exact ``config``-value redaction.
+
 Design decisions
 -----------------
 **Empty-string values are never treated as a match.** ``config`` commonly
@@ -72,9 +97,29 @@ values are only read to build a local, throwaway list of strings to search
 for.
 """
 
-from collections.abc import Mapping
+import contextvars
+import logging
+import re
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 
 DEFAULT_PLACEHOLDER = "***REDACTED***"
+
+# Common API-key/token *shapes* — provider-prefixed tokens (sk-..., xox...)
+# and generic long alphanumeric runs (>= 20 chars, the length of a typical
+# API key/JWT segment) that plausibly hold a secret even when it isn't one
+# of this run's own declared config values. Heuristic and best-effort: it
+# will occasionally miss a real secret in an unusual shape, and could in
+# theory redact an innocuous long identifier — both are acceptable given the
+# "no secret ever appears verbatim" bar this module exists to satisfy (see
+# the "No minimum-length threshold" reasoning below, same trade-off).
+_KEY_SHAPED_PATTERN = re.compile(
+    r"\b(?:sk-|sk_|pk_|xox[baprs]-|ghp_|gho_)[A-Za-z0-9_-]{10,}\b|\b[A-Za-z0-9_-]{20,}\b"
+)
+
+_current_config: contextvars.ContextVar[Mapping[str, str] | None] = contextvars.ContextVar(
+    "skillet_execution_current_config", default=None
+)
 
 
 def redact(text: str, config: Mapping[str, str], *, placeholder: str = DEFAULT_PLACEHOLDER) -> str:
@@ -119,3 +164,62 @@ def redact_exception(
     """
     unsafe = f"{type(exc).__name__}: {exc}"
     return redact(unsafe, config, placeholder=placeholder)
+
+
+def redact_key_shaped_patterns(text: str, *, placeholder: str = DEFAULT_PLACEHOLDER) -> str:
+    """Redact substrings that merely *look* like an API key/token, per
+    ``_KEY_SHAPED_PATTERN`` — defense in depth for secrets that never passed
+    through this run's own ``config`` mapping (e.g. baked into a library's
+    own error message). Heuristic; see module docstring.
+    """
+    if not text:
+        return text
+    return _KEY_SHAPED_PATTERN.sub(placeholder, text)
+
+
+@contextmanager
+def redaction_context(config: Mapping[str, str]) -> Iterator[None]:
+    """Bind ``config`` as the active run's secrets for ``RedactingFilter``
+    for the duration of this ``with`` block (and any ``asyncio`` task spawned
+    from within it — ``contextvars`` propagate across task creation).
+
+    Use this around the code that executes one run (Task 8's endpoint,
+    wrapping its call into ``recipe-framework``'s ``execute()``) so that any
+    ``logging`` call made anywhere underneath — including inside a recipe or
+    a library it calls — gets redacted automatically, without that code
+    needing to import this module or call ``redact()`` itself.
+    """
+    token = _current_config.set(dict(config))
+    try:
+        yield
+    finally:
+        _current_config.reset(token)
+
+
+class RedactingFilter(logging.Filter):
+    """A ``logging.Filter`` that redacts the active run's config secret
+    values (bound via ``redaction_context``) — plus key-shaped patterns, per
+    ``redact_key_shaped_patterns`` — from every log record's message before
+    it's emitted.
+
+    Attach an instance to a logger or handler once (e.g. the root logger, or
+    ``logging.getLogger("skillet")``) at process start; it is a no-op
+    outside of a ``redaction_context`` block (no config bound → nothing to
+    redact against, though the key-shaped heuristic still applies
+    regardless, since it doesn't depend on any bound config).
+
+    Rewrites ``record.msg`` to the fully-formatted, redacted message and
+    clears ``record.args`` — logging formats ``msg % args`` lazily, and
+    redacting only ``record.msg`` while leaving ``record.args`` in place
+    would let a secret passed as a ``%s`` argument survive untouched.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        config = _current_config.get() or {}
+        if config:
+            message = redact(message, config)
+        message = redact_key_shaped_patterns(message)
+        record.msg = message
+        record.args = ()
+        return True

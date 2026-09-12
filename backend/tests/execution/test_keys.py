@@ -6,7 +6,16 @@ design decisions (no minimum-length threshold, longest-value-first ordering,
 etc.) that these tests exercise.
 """
 
-from skillet.execution.keys import DEFAULT_PLACEHOLDER, redact, redact_exception
+import logging
+
+from skillet.execution.keys import (
+    DEFAULT_PLACEHOLDER,
+    RedactingFilter,
+    redact,
+    redact_exception,
+    redact_key_shaped_patterns,
+    redaction_context,
+)
 
 
 def test_redact_replaces_single_secret_value() -> None:
@@ -112,3 +121,58 @@ def test_redact_custom_placeholder() -> None:
     config = {"OPENAI_API_KEY": "sk-abc123456789xyz000"}
     out = redact("key sk-abc123456789xyz000 here", config, placeholder="<hidden>")
     assert out == "key <hidden> here"
+
+
+def test_redact_key_shaped_patterns_catches_provider_prefixed_token() -> None:
+    out = redact_key_shaped_patterns("using key sk-liveAbCdEfGhIjKlMnOp for this call")
+    assert "sk-liveAbCdEfGhIjKlMnOp" not in out
+    assert DEFAULT_PLACEHOLDER in out
+
+
+def test_redact_key_shaped_patterns_catches_long_generic_token() -> None:
+    out = redact_key_shaped_patterns("token=abcdEFGH12345678ijklMNOP9999 rejected")
+    assert "abcdEFGH12345678ijklMNOP9999" not in out
+
+
+def test_redact_key_shaped_patterns_leaves_ordinary_short_text_alone() -> None:
+    msg = "connection timed out after 30s, retrying request id abc123"
+    assert redact_key_shaped_patterns(msg) == msg
+
+
+def test_redacting_filter_scrubs_bound_config_value_from_log_record(caplog) -> None:
+    logger = logging.getLogger("skillet.execution.test_keys.sentinel")
+    logger.addFilter(RedactingFilter())
+    caplog.set_level(logging.INFO, logger=logger.name)
+
+    sentinel = "sk-sentinel-value-do-not-leak-000111222"
+    with redaction_context({"OPENAI_API_KEY": sentinel}):
+        logger.info("calling upstream with key %s", sentinel)
+
+    assert sentinel not in caplog.text
+    assert DEFAULT_PLACEHOLDER in caplog.text
+
+
+def test_redacting_filter_is_a_noop_outside_redaction_context_for_unrelated_text(caplog) -> None:
+    logger = logging.getLogger("skillet.execution.test_keys.no_context")
+    logger.addFilter(RedactingFilter())
+    caplog.set_level(logging.INFO, logger=logger.name)
+
+    logger.info("plain message with nothing sensitive")
+
+    assert caplog.records[-1].getMessage() == "plain message with nothing sensitive"
+
+
+def test_redaction_context_resets_after_block_exits(caplog) -> None:
+    logger = logging.getLogger("skillet.execution.test_keys.reset")
+    logger.addFilter(RedactingFilter())
+    caplog.set_level(logging.INFO, logger=logger.name)
+
+    secret = "sk-should-not-leak-outside-the-with-block-9999"
+    with redaction_context({"KEY": secret}):
+        pass
+    logger.info("message containing %s after the context exited", secret)
+
+    # Outside the `with` block, config-based redaction no longer applies —
+    # but the key-shaped heuristic still catches this since it looks like a
+    # token regardless of any bound config.
+    assert secret not in caplog.text
