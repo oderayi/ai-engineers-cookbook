@@ -185,13 +185,13 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The tab strip: list of tabs, "+" button, per-tab status dot, close button, active-tab highlight, title truncation.
 
 **Acceptance criteria:**
-- [ ] `TabStripItem`: title (truncated for a long recipe title — real CSS truncation, verified via a test asserting the truncation class/style is applied, not just that long text doesn't crash), a status dot (`idle`/`running`/`done`/`error`, 4 visually distinct states — color/icon per `lucide-react`'s `Loader2`/`Check`/`CircleAlert` per the spec's own tech-stack note), a close (`X`) button, active-tab styling
-- [ ] `TabStrip`: renders one `TabStripItem` per open tab (from `useTabs`) plus a `+` control; clicking a tab activates it; clicking `X` closes it (calling the close path that also cancels the run — wired in `tab-panels.tsx`, Task 8, so `TabStrip` itself only needs to expose the close intent via a callback prop, not own the cancellation logic)
-- [ ] A background tab's status dot updates even while inactive (a real test: mock two tabs, change tab B's status while tab A is active, assert B's dot reflects the change)
+- [x] `TabStripItem`: title (truncated for a long recipe title — real CSS truncation, verified via a test asserting the truncation class/style is applied, not just that long text doesn't crash), a status dot (`idle`/`running`/`done`/`error`, 4 visually distinct states — color/icon per `lucide-react`'s `Loader2`/`Check`/`CircleAlert` per the spec's own tech-stack note), a close (`X`) button, active-tab styling
+- [x] `TabStrip`: renders one `TabStripItem` per open tab (from `useTabs`) plus a `+` control; clicking a tab activates it; clicking `X` closes it (calling the close path that also cancels the run — wired in `tab-panels.tsx`, Task 8, so `TabStrip` itself only needs to expose the close intent via a callback prop, not own the cancellation logic)
+- [x] A background tab's status dot updates even while inactive (a real test: mock two tabs, change tab B's status while tab A is active, assert B's dot reflects the change)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test workspace/tab-strip`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test workspace/tab-strip`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 5 (uses `useTabs`)
 
@@ -209,14 +209,14 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The tab-panel host (mounts every open tab's `<RecipeView>`, always, toggling `hidden`) and the zero-tabs empty state.
 
 **Acceptance criteria:**
-- [ ] `TabPanels`: renders one `<RecipeView ref={...} slug={tab.slug} onStatusChange={...} />` per open tab from `useTabs`, ALL mounted at once, `hidden={tab.id !== activeTabId}` (never a conditional `{active && <RecipeView/>}`) — a test explicitly proves the inactive tab's `<RecipeView>` is still in the DOM (present, just hidden), not absent
-- [ ] Holds a `Map<tabId, RecipeViewHandle>` ref registry; closing a tab calls that tab's `cancelRun()` (via the map) exactly once, THEN removes it from tab state — a `running`-status tab's close calls `cancelRun()`; an `idle`/`done`/`error` tab's close does not (assert via a spy, not just "didn't crash")
-- [ ] `onStatusChange` per tab also feeds `useProgress`'s `markCompleted`/nothing-on-error logic (per the spec: `result` → `markCompleted`, `error` → no mark) — wire this here, in the one place that already receives per-tab status transitions
-- [ ] `EmptyWorkspace`: rendered when zero tabs are open, with a link into the catalog index (per Open Question 3's resolution)
+- [x] `TabPanels`: renders one `<RecipeView ref={...} slug={tab.slug} onStatusChange={...} />` per open tab from `useTabs`, ALL mounted at once, `hidden={tab.id !== activeTabId}` (never a conditional `{active && <RecipeView/>}`) — a test explicitly proves the inactive tab's `<RecipeView>` is still in the DOM (present, just hidden), not absent
+- [x] Holds a `Map<tabId, RecipeViewHandle>` ref registry; closing a tab calls that tab's `cancelRun()` (via the map) exactly once, THEN removes it from tab state — a `running`-status tab's close calls `cancelRun()`; an `idle`/`done`/`error` tab's close does not (assert via a spy, not just "didn't crash")
+- [x] `onStatusChange` per tab also feeds `useProgress`'s `markCompleted`/nothing-on-error logic (per the spec: `result` → `markCompleted`, `error` → no mark) — wire this here, in the one place that already receives per-tab status transitions
+- [x] `EmptyWorkspace`: rendered when zero tabs are open, with a link into the catalog index (per Open Question 3's resolution)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test workspace/tab-panels`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test workspace/tab-panels`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 5, 6 (uses `useTabs` + `useProgress`), Task 1 (needs the real, firing `onStatusChange`)
 
@@ -230,8 +230,8 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Components complete (after Tasks 7-8)
-- [ ] Each track's tests pass; no conflicts; `bun run typecheck && bun run lint`
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 5
+- [x] Each track's tests pass; no conflicts; `bun run typecheck && bun run lint`
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 5
 
 ---
 
