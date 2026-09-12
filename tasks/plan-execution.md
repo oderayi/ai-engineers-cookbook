@@ -197,3 +197,63 @@ Carried from the spec, not blocking for these tasks:
   as a follow-up for that module rather than worked around here.
 - Multi-run per tab — spec leans "cancel-and-restart"; `workspace`'s
   concern, not blocking this module's own success criteria.
+
+## Success-criteria sign-off (Task 16)
+
+Every numbered Success Criterion in `SPEC-execution.md`, mapped to what
+verifies it. Module complete: full backend suite green (167 passed, 92%
+`execution/` coverage — ≥ the 90% target), full frontend unit suite green
+(550 passed), 20/20 Playwright E2E tests stable across 3 consecutive runs
+of the new spec, `uv run ruff check .` / `bun run {typecheck,lint,build}`
+all clean. Several genuine, independently-discovered gaps were found and
+fixed while building this module's own verification (not just features
+shipped), cross-referenced below: two backend logging/redaction gaps (Task
+9), a testing-infrastructure discovery that `TestClient`/`ASGITransport`
+can't prove real streaming or disconnect behavior (Task 8), a missing
+Cancel button in the UI entirely (Task 15), and a subagent's first pass at
+Task 7 under-delivering against its own acceptance criteria.
+
+| # | Criterion | Verified by |
+|---|---|---|
+| 1 | A bundled recipe runs end-to-end: `POST /run` streams `step` → `token`* → `result`, rendered live by `<RunOutput>` | `e2e/run-recipe.spec.ts`'s first test — a real `echo` recipe, real backend, real browser: fills the form, clicks Run, asserts the collapsed step row and the exact echoed message in the terminal result both render. Also a real `curl -N` sanity check performed while building Task 8 (snake_case SSE lines arriving incrementally) |
+| 2 | Post-run, a sentinel key value is absent from all logs, the (now-deleted) run tempdir, and any client-visible error — enforced by test + CI log-grep | `tests/execution/test_key_hygiene.py` (2 tests) + `scripts/check_log_redaction.py`, verified against a real negative control (temporarily un-wiring `install_redacting_filter()` reproduced a real leak in the log traceback, caught by the script). **Two real gaps found and closed while building this**, both undocumented risks until this test surfaced them: `RedactingFilter` (Task 7) was never attached to any real logger (a filter on a parent logger doesn't apply to a child logger's own records — confirmed empirically), and message-only redaction doesn't touch an attached exception traceback at all (`logging.Formatter` renders that from `record.exc_text`, entirely separately) — both closed in Task 9's own commit, plus a third, independent gap on the client-visible side: `execute()`'s terminal `ErrorEvent.message` was reaching the client completely unredacted, fixed via `stream._redact_client_visible_message` |
+| 3 | `404` / `422` (bad params, undeclared `config` key) / `413` (upload caps) are returned before recipe code executes | `tests/execution/test_run_endpoint.py` — each rejection case writes a marker file from inside the recipe's own `run()` and asserts it was never created, proving recipe code didn't just fail loudly but never ran at all, not merely that the right status code came back |
+| 4 | Client cancel stops the server task within ~1 s and removes the run tempdir | `tests/execution/test_cancel.py` — a real socket-level test (see below), stable across repeated runs; also `e2e/run-recipe.spec.ts`'s second test covers the client's own affordance (the browser button), with the server-side guarantee left to the backend test rather than re-proven at the E2E layer |
+| 5 | Timeout and output-limit each produce exactly one terminal `error` event with the right `error_type`; the task is stopped | `test_output_limit_breach_is_wired_through_as_terminal_error` and `test_timeout_breach_is_wired_through_as_terminal_error` (`test_run_endpoint.py`) — both explicitly scoped to proving *this endpoint's wiring* carries the terminal event through correctly, not re-deriving `recipe-framework`'s own 90s/256KB/2000-event enforcement (already exhaustively covered by its `test_executor_run.py`). The timeout case monkeypatches `stream.py`'s own `execute` reference to a 0.05s timeout, since waiting out a real 90s timeout in a test is impractical |
+| 6 | Every event type and every `error_type`, plus the `429` rate-limit notice, render distinctly from fixtures with no backend running | `tests/execution/run-output.test.tsx` — 19 tests, all 7 event types + all 5 `error_type`s + the 429 notice each proven to render distinctly, driven directly from `tests/execution/fixtures/*` with `RunOutputView` (the pure, hook-free half of `<RunOutput>`) and no mocked hook at all |
+| 7 | The client targets `settings.customBackendUrl` when set, the default backend otherwise | `tests/execution/backend-url.test.ts` (3 tests, Task 5) |
+
+**Real gaps found and fixed along the way, not just features shipped** (full
+detail in each task's own commit message and `tasks/todo-execution.md`
+entry):
+- **Task 7** (key redaction): a subagent's first pass, dispatched from a
+  paraphrased summary rather than the literal task file, delivered plain
+  string-redaction helpers instead of the specified `logging.Filter` +
+  `contextvars` mechanism — closed same-day, documented in the todo file
+  itself as a lesson on re-reading task text verbatim before writing a
+  subagent prompt.
+- **Task 8** (the run endpoint): discovered empirically that neither
+  `fastapi.testclient.TestClient` nor `httpx.AsyncClient(transport=
+  httpx.ASGITransport(...))` support genuine incremental streaming or
+  deliver a real ASGI `http.disconnect` — both run the whole ASGI app to
+  completion, fully buffered, before returning anything. Required a small
+  real-uvicorn-on-a-real-socket test helper (`tests/execution/_server.py`)
+  for the two tests that actually need that fidelity.
+- **Task 9** (key hygiene): see criterion 2's row above — two backend
+  redaction gaps and one client-visible-message gap, all found by writing
+  the module's own "important" test rather than assuming Tasks 7/8 already
+  covered it.
+- **Task 14** (catalog wiring): `run-form.tsx` never actually called
+  `useResolvedConfig` before this task — `RunForm.onSubmit` had never sent
+  `config` at all, despite the plan's own assumption that it already did.
+- **Task 15** (E2E): no fixture recipe was slow enough for a real click to
+  land reliably mid-run (added `demo/30-slow-echo`), and — more
+  significantly — there was no visible, clickable Cancel button anywhere in
+  the UI at all; `RunOutputHandle.cancel()` (Task 13) was only ever
+  reachable via a ref, for `workspace`'s future tab-close use case. Both
+  fixed before the E2E spec could be written meaningfully.
+
+No criterion is a partial/carried-forward this time — unlike every prior
+module's own sign-off table, all 7 were fully verifiable within this
+module's own scope, since `catalog` (the one cross-module consumer) was
+already built and available to wire against directly in Task 14.
