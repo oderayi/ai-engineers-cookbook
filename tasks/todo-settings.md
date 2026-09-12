@@ -213,18 +213,31 @@ object) and the env-key → provider display metadata (label, docs URL) map.
 Phase 1 into the actual settings state hook the UI consumes.
 
 **Acceptance criteria:**
-- [ ] Reads the persisted blob through the Zod schema + migration runner on
+- [x] Reads the persisted blob through the Zod schema + migration runner on
       mount (via `use-local-storage`'s `parse` callback)
-- [ ] Exposes actions: `setGlobalKey(envKey, value)`, `setBackendUrl(url)`,
+- [x] Exposes actions: `setGlobalKey(envKey, value)`, `setBackendUrl(url)`,
       `setOverride(slug, envKey, value)`, `clearOverride(slug, envKey)`,
       `clearAll()`
-- [ ] `setOverride` silently no-ops (or is simply not callable in a way that
-      matters — document the choice) for an env key not validated elsewhere;
-      the *enforcement* that only declared keys are ever written lives in the
-      UI (Task 10 only renders fields for declared keys) — this hook itself
-      just stores whatever key it's given, matching `resolve.ts`'s posture of
-      trusting its caller
-- [ ] `clearAll()` calls through to `storage.clear()` / resets to `emptySettings()`
+- [x] `setOverride`/`setGlobalKey` store whatever key/value they're given
+      without validating the key against a recipe's declared env vars —
+      enforcement lives in the UI (Task 10), matching `resolve.ts`'s posture
+      of trusting its caller
+- [x] `clearAll()` calls through to `useLocalStorage`'s own `clear()` /
+      resets to `emptySettings()` (not `storage.clear()` directly — see
+      note below)
+
+**Deviation from the plan, documented at implementation time:** `useSettings`
+composes `useLocalStorage` directly (its own `parse` callback runs
+`migrate()` + schema validation, mirroring `storage.ts`'s `read()`) rather
+than calling `storage.ts`'s `read`/`write`/`clear` functions, which read
+`window.localStorage` themselves and don't fit `useLocalStorage`'s
+`parse(raw: string)` signature. `storage.ts` remains a valid standalone
+utility for any future non-React/synchronous read (its own tests still
+cover it) — `useSettings` just doesn't route through it for the reactive
+path. Also found and fixed a latent `useLocalStorage` bug while building
+this (see the separate "fix use-local-storage getSnapshot reference
+instability" commit) — building the first hook whose `T` was an object,
+rather than a primitive, is what surfaced it.
 
 **Verification:**
 - [ ] Tests pass: `cd frontend && bun run test use-settings`
@@ -245,13 +258,21 @@ Phase 1 into the actual settings state hook the UI consumes.
 **Description:** `useResolvedConfig(recipe: { slug, env }): ResolvedConfig` —
 composes `useSettings()` with `resolveConfig()`.
 
+**Deviation from the plan, documented at implementation time:** returns
+`[ResolvedConfig, SettingsActions]` rather than bare `ResolvedConfig`, so a
+recipe's run form (a single `useResolvedConfig(recipe)` call) can both
+render the resolved config and let the user edit an override right there,
+without a second `useSettings()` mount. Both would subscribe to the same
+underlying `useLocalStorage` either way; this just saves the caller a
+second hook call for what's expected to be the common case.
+
 **Acceptance criteria:**
-- [ ] For a recipe declaring a key with a global default set and no override,
+- [x] For a recipe declaring a key with a global default set and no override,
       returns `source: "global"` for that field
-- [ ] For a recipe with no matching settings at all, returns
+- [x] For a recipe with no matching settings at all, returns
       `{ config: {}, fields: [...all "unset"], missingRequired: [...] }` —
       never throws, never blocks (empty state is first-class per the spec)
-- [ ] Recomputes when the underlying settings change (re-render on
+- [x] Recomputes when the underlying settings change (re-render on
       `useSettings`'s state changing)
 
 **Verification:**
@@ -269,7 +290,7 @@ composes `useSettings()` with `resolveConfig()`.
 ---
 
 ## Checkpoint: Hooks complete (after Tasks 5–6)
-- [ ] `bun run test`, `typecheck`, `lint` clean
+- [x] `bun run test`, `typecheck`, `lint` clean (21 files, 144/144 tests)
 - [ ] **Human review before the UI parallel batch**
 
 ---
