@@ -46,12 +46,27 @@ test.describe("Responsive layout", () => {
   test("the mobile drawer opens and shows the same nav content as the desktop rail", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
+    // Compares whatever the sidebar actually renders, rather than asserting
+    // a specific recipe title: since catalog's Task 6, the nav tree is real
+    // fetched data (app/layout.tsx), not the static nav-tree.ts fixture this
+    // test originally hardcoded ("Prompt Basics"). This environment has no
+    // backend running during `bun run test:e2e` (and no real recipe content
+    // exists yet — see docs/CAPABILITY-MAP.md, content authoring is ongoing
+    // work outside all 8 modules), so both lists below are currently empty
+    // and this assertion is trivially true. Still worth keeping: it starts
+    // catching a real drawer/rail content mismatch the moment catalog's
+    // Task 16 wires a live backend into the E2E harness.
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/");
+    const desktopLinks = await page.locator("aside a").allTextContents();
 
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.reload();
     await page.getByRole("button", { name: /open menu/i }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Prompt Basics")).toBeVisible();
+    const drawerLinks = await dialog.locator("a").allTextContents();
+
+    expect(drawerLinks).toEqual(desktopLinks);
   });
 });
