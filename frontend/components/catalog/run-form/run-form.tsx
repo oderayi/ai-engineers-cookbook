@@ -14,21 +14,37 @@ import { SliderField } from "@/components/catalog/run-form/fields/slider-field";
 import { SwitchField } from "@/components/catalog/run-form/fields/switch-field";
 import { TextField } from "@/components/catalog/run-form/fields/text-field";
 import { TextareaField } from "@/components/catalog/run-form/fields/textarea-field";
+import { useResolvedConfig } from "@/hooks/use-resolved-config";
 import { compileForm } from "@/lib/catalog/schema-form";
 import type { RecipeDetail } from "@/lib/api/models";
 
 export interface RunFormSubmitPayload {
   params: Record<string, unknown>;
   recipeSlug: string;
+  /**
+   * `RecipeOverrides`' resolved config (`useResolvedConfig`, called here —
+   * `RecipeOverrides` itself calls its own copy for rendering, but has no
+   * prop through which to hand the result back up, so this is a second,
+   * independent subscription to the same underlying settings store, not a
+   * duplicated source of truth). Sent verbatim as the run's `config`
+   * (`execution`'s Confirmed Decision 2: the server never recomputes it).
+   */
+  config: Record<string, string>;
+  /**
+   * Every `control: "files"` field's real `File[]` value, keyed by field
+   * name — split out of `params` because `execution`'s wire contract sends
+   * files as their own multipart parts, never JSON-embedded (a browser
+   * `File` object doesn't survive `JSON.stringify` meaningfully).
+   */
+  files: Record<string, File[]>;
 }
 
 export interface RunFormProps {
   recipe: RecipeDetail;
   /**
-   * Receives `{ params, recipeSlug }` on a valid submit. `execution` (built
-   * after `catalog`) is the real destination for this — no such consumer
-   * exists yet, so an unset `onSubmit` no-ops rather than this component
-   * inventing a fake destination for the data.
+   * Receives `{ params, recipeSlug, config, files }` on a valid submit. An
+   * unset `onSubmit` no-ops rather than this component inventing a fake
+   * destination for the data.
    */
   onSubmit?: (payload: RunFormSubmitPayload) => void;
 }
@@ -58,13 +74,15 @@ export interface RunFormHandle {
  * fields), embeds `settings`' `<RecipeOverrides recipe={recipe} />` verbatim
  * — no adapter, the whole point of `RecipeDetail`/`RecipeEnvDecl`'s
  * structural compatibility — and hands a valid submission's `{ params,
- * recipeSlug }` upward via `onSubmit`.
+ * recipeSlug, config, files }` upward via `onSubmit` (see
+ * `RunFormSubmitPayload`'s own doc comments for `config`/`files`).
  */
 export const RunForm = forwardRef<RunFormHandle, RunFormProps>(function RunForm(
   { recipe, onSubmit },
   ref
 ) {
   const { fields, validator } = useMemo(() => compileForm(recipe.inputSchema), [recipe]);
+  const [resolved] = useResolvedConfig(recipe);
 
   const form = useForm<Record<string, unknown>>({
     // `mode: "onChange"` so `formState.isValid` (the Run button's enabled
@@ -115,13 +133,26 @@ export const RunForm = forwardRef<RunFormHandle, RunFormProps>(function RunForm(
   );
 
   function onValidSubmit(values: Record<string, unknown>) {
-    if (onSubmit) {
-      onSubmit({ params: values, recipeSlug: recipe.slug });
+    if (!onSubmit) return;
+
+    // File-control fields hold real browser `File[]` values in `values`
+    // (same object react-hook-form validated against) -- split those out
+    // into their own map rather than leaving them in `params`, matching
+    // `RunFormSubmitPayload.files`'s doc comment on why.
+    const fileFieldNames = new Set(
+      fields.filter((field) => field.control === "files").map((field) => field.name)
+    );
+    const params: Record<string, unknown> = {};
+    const files: Record<string, File[]> = {};
+    for (const [key, value] of Object.entries(values)) {
+      if (fileFieldNames.has(key)) {
+        files[key] = (value as File[] | undefined) ?? [];
+      } else {
+        params[key] = value;
+      }
     }
-    // TODO(execution): no run form consumer exists yet. Once `execution`
-    // exists, its own hook is expected to be the thing callers actually
-    // pass as `onSubmit` — this component has nowhere real to send a
-    // submission on its own.
+
+    onSubmit({ params, recipeSlug: recipe.slug, config: resolved.config, files });
   }
 
   return (

@@ -6,24 +6,22 @@ import { AlertTriangle } from "lucide-react";
 
 import { DescriptionPanel } from "@/components/catalog/description-panel";
 import { ExamplesPanel } from "@/components/catalog/examples-panel";
-import { RunForm, type RunFormHandle } from "@/components/catalog/run-form/run-form";
+import { RunForm, type RunFormHandle, type RunFormSubmitPayload } from "@/components/catalog/run-form/run-form";
 import { SourceViewer } from "@/components/catalog/source-viewer";
+import { RunOutput, type RunOutputHandle } from "@/components/execution/run-output";
 import { EmptyState } from "@/components/primitives/empty-state";
 import { Skeleton } from "@/components/primitives/skeleton";
 import { useRecipe, useSource } from "@/hooks/use-recipes";
+import type { RunStatus } from "@/hooks/use-recipe-run";
 import { cn } from "@/lib/cn";
 
 /**
- * Stub, not an authoritative type: `execution` (built after `catalog`) owns
- * the real `useRecipeRun` hook this status comes from. Defined locally here
- * so `RecipeView`'s `onStatusChange` prop has a real type today rather than
- * `unknown`/`any` — matches the literal state list `SPEC-catalog.md`'s own
- * `workspace` amendment describes (`idle → running → done | error`, back to
- * `idle` on cancel-and-restart). Superseded once `execution` exists; nothing
- * here currently produces a value other than never calling the callback at
- * all.
+ * `execution`'s own `useRecipeRun` status literal, re-exported under this
+ * module's established name (`onStatusChange`'s existing prop type) rather
+ * than changing the prop's type now that a real one exists -- avoids a
+ * churn-only rename for `workspace`, the one other consumer of this type.
  */
-export type RecipeRunStatus = "idle" | "running" | "done" | "error";
+export type RecipeRunStatus = RunStatus;
 
 /**
  * The `workspace` cross-module contract (`SPEC-catalog.md`, amendment
@@ -40,7 +38,15 @@ export interface RecipeViewHandle {
 
 export interface RecipeViewProps {
   slug: string;
-  /** Unused today — see `RecipeRunStatus`'s own doc comment. */
+  /**
+   * Still unused: `<RunOutput>` (mounted below) owns `useRecipeRun`
+   * internally and doesn't report its status upward — only `start`/`cancel`,
+   * via `RunOutputHandle`. Wiring this through (an `onStatusChange` prop on
+   * `RunOutput` itself, forwarding `useRecipeRun`'s `status`) is `workspace`
+   * cross-module wiring, out of `execution`'s own scope; kept here,
+   * unwired, so `workspace` doesn't need to touch this file's prop surface
+   * later, per the same amendment that added this prop.
+   */
   onStatusChange?: (status: RecipeRunStatus) => void;
   className?: string;
 }
@@ -64,14 +70,13 @@ export const RecipeView = forwardRef<RecipeViewHandle, RecipeViewProps>(function
   const recipeQuery = useRecipe(slug);
   const sourceQuery = useSource(slug);
   const runFormRef = useRef<RunFormHandle>(null);
+  const runOutputRef = useRef<RunOutputHandle>(null);
 
   useImperativeHandle(
     ref,
     () => ({
       cancelRun: () => {
-        // TODO(execution): no in-flight run exists to cancel until
-        // execution's useRecipeRun exists for this component to delegate
-        // to. Documented no-op, not fabricated behavior.
+        runOutputRef.current?.cancel();
       },
     }),
     []
@@ -108,6 +113,14 @@ export const RecipeView = forwardRef<RecipeViewHandle, RecipeViewProps>(function
     runFormRef.current?.focus();
   }
 
+  function handleRunSubmit(payload: RunFormSubmitPayload) {
+    runOutputRef.current?.start({
+      params: payload.params,
+      config: payload.config,
+      files: payload.files,
+    });
+  }
+
   return (
     <div className={cn("flex flex-col gap-8", className)}>
       {/* `recipe.summary` itself is NOT repeated here -- `DescriptionPanel`
@@ -134,7 +147,8 @@ export const RecipeView = forwardRef<RecipeViewHandle, RecipeViewProps>(function
         <p className="text-sm text-muted-foreground">Source is unavailable right now.</p>
       )}
 
-      <RunForm ref={runFormRef} recipe={recipe} />
+      <RunForm ref={runFormRef} recipe={recipe} onSubmit={handleRunSubmit} />
+      <RunOutput ref={runOutputRef} slug={recipe.slug} />
     </div>
   );
 });

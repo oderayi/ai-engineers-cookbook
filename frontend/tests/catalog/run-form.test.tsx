@@ -50,7 +50,7 @@ describe("RunForm", () => {
     });
   });
 
-  it("submitting calls onSubmit with { params, recipeSlug }", async () => {
+  it("submitting calls onSubmit with { params, recipeSlug, config, files }", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<RunForm recipe={promptBasics} onSubmit={onSubmit} />);
@@ -63,8 +63,49 @@ describe("RunForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         params: { question: "What is 2+2?" },
         recipeSlug: "prompt-basics",
+        // promptBasics declares no env vars and no file fields, so both
+        // resolve to empty -- see the next test for a recipe that actually
+        // declares both.
+        config: {},
+        files: {},
       });
     });
+  });
+
+  it("onSubmit's config is the recipe's real resolved config end-to-end, not just some object", async () => {
+    // Confirms Task 14's own acceptance criterion: the value RunForm sends
+    // as `config` is genuinely `useResolvedConfig`'s output for THIS
+    // recipe's declared env, not a hardcoded/empty stand-in -- seed a real
+    // global override the same way settings' own storage.ts writes it, then
+    // assert the resolved value actually made it into the submit payload.
+    window.localStorage.setItem(
+      "skillet.settings",
+      JSON.stringify({
+        version: 1,
+        global: { OPENAI_API_KEY: "sk-real-resolved-value" },
+        overrides: {},
+        customBackendUrl: "",
+      })
+    );
+
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<RunForm recipe={embeddings101} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText("Texts"), "hello world");
+    const file = new File(["doc contents"], "notes.txt", { type: "text/plain" });
+    await user.upload(screen.getByLabelText("Documents"), file);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const payload = onSubmit.mock.calls[0][0];
+    expect(payload.config).toEqual({ OPENAI_API_KEY: "sk-real-resolved-value" });
+    expect(payload.files.documents).toEqual([file]);
+    expect(payload.params.documents).toBeUndefined(); // split out of params, not left behind
   });
 
   it("does not crash on submit when no onSubmit prop is given (default no-op)", async () => {
