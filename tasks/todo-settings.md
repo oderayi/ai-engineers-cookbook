@@ -1,0 +1,489 @@
+# Tasks: `settings`
+
+Plan: [tasks/plan-settings.md](plan-settings.md). Spec: [docs/SPEC-settings.md](../docs/SPEC-settings.md).
+
+---
+
+## Phase 0: Foundation (sequential)
+
+### Task 0: `lib/settings/types.ts` + `lib/settings/schema.ts`
+
+**Description:** The `RecipeEnvDecl` type (a local, minimal stand-in for
+catalog's future richer `EnvVar` — see the plan's Architecture Decisions) and
+the `SettingsV1` Zod schema exactly as specified.
+
+**Acceptance criteria:**
+- [ ] `RecipeEnvDecl` exported with `{ key: string; provider: string; required: boolean; description: string }`
+- [ ] `settingsV1Schema` matches the spec's Code Style sample exactly: `version`
+      (literal `1`), `global` (record of env-key → string), `customBackendUrl`
+      (validated absolute http(s) URL, normalized, empty string allowed),
+      `overrides` (record of slug → record of env-key → string)
+- [ ] `CURRENT_VERSION = 1 as const` exported
+- [ ] A `customBackendUrl` with a trailing slash is normalized (slash stripped)
+      on parse; a non-http(s) URL is rejected; an empty string is accepted
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test settings/schema`
+- [ ] `bun run typecheck`
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `frontend/lib/settings/types.ts`
+- `frontend/lib/settings/schema.ts`
+- `frontend/tests/settings/schema.test.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Foundation (after Task 0)
+- [ ] `bun run typecheck` clean
+- [ ] **Human review before the parallel batch**
+
+---
+
+## Phase 1: Parallel batch — 4 independent tracks
+
+*Dispatched to subagents concurrently. Each touches a disjoint file set and
+depends only on Task 0. Write tests first (TDD).*
+
+### Task 1 [PARALLEL — Track A]: `resolve.ts` — the merge policy
+
+**Description:** `resolveConfig(recipe, global, overrides)` exactly as
+specified — the single most important function in this module, since
+`catalog` and `execution` both consume its output shape.
+
+**Acceptance criteria:**
+- [ ] Matches the spec's Code Style sample: `FieldSource = "override" | "global" | "unset"`,
+      `ResolvedField { key, value, source, required }`,
+      `ResolvedConfig { config, fields, missingRequired }`
+- [ ] Merge table, every case: override present → `"override"`; only global set
+      → `"global"`; neither → `"unset"` and absent from `config`;
+      whitespace-only override falls through to global; whitespace-only global
+      falls through to unset; an override for an undeclared key never appears
+      in `config`/`fields` (the function only ever iterates `recipe.env`, so
+      this is true by construction — test it anyway); `missingRequired` lists
+      exactly the declared-required keys that resolved to nothing; a recipe
+      with empty `env` resolves to `{config: {}, fields: [], missingRequired: []}`
+      with no error
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test settings/resolve`
+- [ ] `bun run typecheck && bun run lint`
+- [ ] Coverage: this file needs to reach ≥95% line coverage eventually (Task 13
+      checks the final number) — write tests accordingly now rather than
+      backfilling later
+
+**Dependencies:** Task 0
+
+**Files likely touched:**
+- `frontend/lib/settings/resolve.ts`
+- `frontend/tests/settings/resolve.test.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 2 [PARALLEL — Track B]: `storage.ts` + `migrations.ts`
+
+**Description:** The versioned `localStorage` blob's read/write/clear layer
+and its forward-only migration runner.
+
+**Acceptance criteria:**
+- [ ] `storage.ts`: `STORAGE_KEY = "skillet.settings"`; `read()` parses via
+      the Zod schema (running migrations first — see below), `write(settings)`,
+      `clear()`. Malformed JSON, a schema-invalid blob, or a `version` newer
+      than `CURRENT_VERSION` all fall back to `emptySettings()`-shaped defaults
+      without throwing (defer to Task 4's `defaults.ts` for the actual
+      default-object constructor — stub inline here if Task 4 isn't merged yet,
+      reconcile at integration)
+- [ ] `migrations.ts`: `migrate(raw: unknown): SettingsV1`. An unversioned/
+      legacy blob upgrades to `CURRENT_VERSION` with values preserved; each
+      migration step is a pure function, independently tested
+- [ ] A fully-populated `SettingsV1` survives a write→read round-trip
+      byte-for-byte (after `customBackendUrl` normalization)
+- [ ] Unknown top-level fields in a stored blob are stripped, not preserved
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test settings/storage settings/migrations`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Task 0
+
+**Files likely touched:**
+- `frontend/lib/settings/storage.ts`
+- `frontend/lib/settings/migrations.ts`
+- `frontend/tests/settings/storage.test.ts`
+- `frontend/tests/settings/migrations.test.ts`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 3 [PARALLEL — Track C]: `use-local-storage.ts`
+
+**Description:** The generic, SSR-safe, cross-tab-synced `localStorage`
+primitive from the spec's Code Style sample — genuinely generic, not
+settings-specific (any future module needing a typed `localStorage` slot can
+reuse this, per `workspace`'s spec explicitly saying to reuse it rather than
+fork one).
+
+**Acceptance criteria:**
+- [ ] Matches the spec's signature: `useLocalStorage<T>(key, fallback, parse)
+      -> readonly [T, setter, clear]`
+- [ ] SSR-safe: initial render returns `fallback` (hydration happens in an
+      effect), no `window` access during render
+- [ ] A `localStorage.getItem`/`setItem` throwing (private mode, quota) is
+      caught — state still updates in-memory for the session, no crash
+- [ ] Cross-tab: a `storage` event for the same key updates the hook's value;
+      a `storage` event for a different key is ignored
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test use-local-storage`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** None (generic — doesn't even need Task 0)
+
+**Files likely touched:**
+- `frontend/hooks/use-local-storage.ts`
+- `frontend/tests/hooks/use-local-storage.test.tsx`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 4 [PARALLEL — Track D]: `defaults.ts` + `providers.ts`
+
+**Description:** `emptySettings()` (the canonical empty/default `SettingsV1`
+object) and the env-key → provider display metadata (label, docs URL) map.
+
+**Acceptance criteria:**
+- [ ] `emptySettings(): SettingsV1` returns `{ version: CURRENT_VERSION, global: {}, customBackendUrl: "", overrides: {} }`
+- [ ] `providers.ts` exports a `Record<string, { label: string; docsUrl?: string }>`
+      seeded with at least `OPENAI_API_KEY` (per the spec's Open Question 6
+      leaning — "OpenAI at minimum")
+- [ ] Both are pure data/functions with no DOM or `localStorage` access
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test settings/defaults settings/providers`
+- [ ] `bun run typecheck`
+
+**Dependencies:** Task 0
+
+**Files likely touched:**
+- `frontend/lib/settings/defaults.ts`
+- `frontend/lib/settings/providers.ts`
+- `frontend/tests/settings/defaults.test.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Parallel batch 1 merged (after Tasks 1–4)
+- [ ] Each track's own tests pass in isolation
+- [ ] No file conflicts (disjoint file sets — confirm via `git status` before staging)
+- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+- [ ] Reconcile Task 2's stubbed default-object reference with Task 4's real `emptySettings()`
+- [ ] **Human review before hook composition**
+
+---
+
+## Phase 2: Hook composition (sequential)
+
+### Task 5: `hooks/use-settings.ts`
+
+**Description:** `useSettings(): [SettingsV1, actions]` — composes
+`use-local-storage.ts` with the schema/storage/migrations/defaults from
+Phase 1 into the actual settings state hook the UI consumes.
+
+**Acceptance criteria:**
+- [ ] Reads the persisted blob through the Zod schema + migration runner on
+      mount (via `use-local-storage`'s `parse` callback)
+- [ ] Exposes actions: `setGlobalKey(envKey, value)`, `setBackendUrl(url)`,
+      `setOverride(slug, envKey, value)`, `clearOverride(slug, envKey)`,
+      `clearAll()`
+- [ ] `setOverride` silently no-ops (or is simply not callable in a way that
+      matters — document the choice) for an env key not validated elsewhere;
+      the *enforcement* that only declared keys are ever written lives in the
+      UI (Task 10 only renders fields for declared keys) — this hook itself
+      just stores whatever key it's given, matching `resolve.ts`'s posture of
+      trusting its caller
+- [ ] `clearAll()` calls through to `storage.clear()` / resets to `emptySettings()`
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test use-settings`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 0, 2, 3, 4
+
+**Files likely touched:**
+- `frontend/hooks/use-settings.ts`
+- `frontend/tests/hooks/use-settings.test.tsx`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 6: `hooks/use-resolved-config.ts`
+
+**Description:** `useResolvedConfig(recipe: { slug, env }): ResolvedConfig` —
+composes `useSettings()` with `resolveConfig()`.
+
+**Acceptance criteria:**
+- [ ] For a recipe declaring a key with a global default set and no override,
+      returns `source: "global"` for that field
+- [ ] For a recipe with no matching settings at all, returns
+      `{ config: {}, fields: [...all "unset"], missingRequired: [...] }` —
+      never throws, never blocks (empty state is first-class per the spec)
+- [ ] Recomputes when the underlying settings change (re-render on
+      `useSettings`'s state changing)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test use-resolved-config`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 1, 5
+
+**Files likely touched:**
+- `frontend/hooks/use-resolved-config.ts`
+- `frontend/tests/hooks/use-resolved-config.test.tsx`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Hooks complete (after Tasks 5–6)
+- [ ] `bun run test`, `typecheck`, `lint` clean
+- [ ] **Human review before the UI parallel batch**
+
+---
+
+## Phase 3: Parallel batch — 3 independent UI tracks
+
+### Task 7 [PARALLEL — Track A]: `provider-key-field.tsx` + `keys-safety-note.tsx`
+
+**Description:** A masked API-key input with a show/hide toggle, and the
+"keys stay in your browser" messaging block used on both settings surfaces.
+
+**Acceptance criteria:**
+- [ ] `provider-key-field.tsx`: renders `type="password"` by default; a
+      show/hide toggle (`Eye`/`EyeOff` from `lucide-react`) flips to
+      `type="text"` and back; toggling one field's visibility never affects
+      another field's; the raw value is never logged or otherwise emitted
+      outside the input's own value
+- [ ] `keys-safety-note.tsx`: a shadcn `Alert`-based block with the "your keys
+      stay in this browser, sent only when you run a recipe" message
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test provider-key-field`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Task 0 (types only, for prop shapes if needed)
+
+**Files likely touched:**
+- `frontend/components/settings/provider-key-field.tsx`
+- `frontend/components/settings/keys-safety-note.tsx`
+- `frontend/tests/settings/provider-key-field.test.tsx`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 8 [PARALLEL — Track B]: `backend-url-field.tsx`
+
+**Description:** The custom backend URL input, validated client-side against
+the same rule as the Zod schema (absolute http(s) URL or empty).
+
+**Acceptance criteria:**
+- [ ] Shows a validation message for a non-empty, non-http(s) value
+- [ ] Accepts an empty value (falls back to the default backend, per the spec)
+- [ ] Does not itself write to `localStorage` — takes `value`/`onChange` props,
+      composed into `useSettings` by whoever mounts it (Task 11)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test backend-url-field`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Task 0
+
+**Files likely touched:**
+- `frontend/components/settings/backend-url-field.tsx`
+- `frontend/tests/settings/backend-url-field.test.tsx`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 9 [PARALLEL — Track C]: `clear-all-button.tsx`
+
+**Description:** "Clear all settings" with a confirm dialog (shadcn `Dialog`)
+before actually wiping the blob.
+
+**Acceptance criteria:**
+- [ ] Clicking the button opens a confirmation dialog; clicking "confirm"
+      calls the provided `onConfirm` (wired to `useSettings().clearAll` by
+      whoever mounts it); clicking "cancel" or dismissing does nothing
+- [ ] Keyboard-operable (Escape closes, Enter on the trigger opens)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test clear-all-button`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** None (takes an `onConfirm` callback prop — doesn't need
+`use-settings` directly)
+
+**Files likely touched:**
+- `frontend/components/settings/clear-all-button.tsx`
+- `frontend/tests/settings/clear-all-button.test.tsx`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Parallel batch 2 merged (after Tasks 7–9)
+- [ ] Each track's own tests pass in isolation
+- [ ] No file conflicts
+- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean
+
+---
+
+## Phase 4: Composition — 2 independent tracks
+
+### Task 10 [PARALLEL — Track A]: `recipe-overrides.tsx` + `inheritance-badge.tsx`
+
+**Description:** The per-recipe overrides panel `catalog`'s run form embeds
+directly — **this is the module's critical cross-module deliverable; get the
+prop interface exactly right.** Per `SPEC-catalog.md`'s `RunForm` code
+sample, it is mounted as `<RecipeOverrides recipe={recipe} />`.
+
+**Acceptance criteria:**
+- [ ] `RecipeOverrides` accepts `{ recipe: { slug: string; env: RecipeEnvDecl[] } }`
+      (structurally satisfied by catalog's future richer `RecipeDetail` without
+      any adapter) — no other required props
+- [ ] Renders one row per entry in `recipe.env`, using `useResolvedConfig`
+      internally to get each field's current value/source
+- [ ] `inheritance-badge.tsx`: a small badge component — "Inherited from
+      global" (source `"global"`), "Overridden" (source `"override"`), "Not
+      set" (source `"unset"`, styled distinctly when `required: true`)
+- [ ] With a global key set and no override: shows "Inherited from global",
+      field placeholder reflects the (masked) global value
+- [ ] Typing an override flips the badge to "Overridden" and reveals a "reset
+      to global" affordance; clicking it clears the override and the badge
+      returns to "Inherited from global" (or "Not set" if no global exists)
+- [ ] A declared key with neither override nor global shows "Not set"
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test recipe-overrides`
+- [ ] `bun run typecheck && bun run lint`
+- [ ] Manual check: the exported prop type is copy-pasteable into a scratch
+      file alongside a fixture shaped like `SPEC-catalog.md`'s `RecipeDetail`
+      and type-checks with no cast
+
+**Dependencies:** Tasks 0, 1, 6
+
+**Files likely touched:**
+- `frontend/components/settings/recipe-overrides.tsx`
+- `frontend/components/settings/inheritance-badge.tsx`
+- `frontend/tests/settings/recipe-overrides.test.tsx`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 11 [PARALLEL — Track B]: `settings-screen.tsx`
+
+**Description:** The global settings screen — composes Tasks 7-9's field
+components with `useSettings()`. Mounted in `app-shell`'s main slot (Task 12).
+
+**Acceptance criteria:**
+- [ ] Renders a `ProviderKeyField` per entry in `providers.ts` (starting with
+      `OPENAI_API_KEY`), the `BackendUrlField`, the `KeysSafetyNote`, and the
+      `ClearAllButton` wired to `useSettings().clearAll`
+- [ ] Changes to any field persist through `useSettings`'s actions (verified
+      via a round-trip test: change a field, re-mount, see the new value)
+- [ ] Renders correctly with an empty settings store (no keys set) — the
+      empty state is not an error or a blocking screen
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test settings-screen`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 5, 7, 8, 9
+
+**Files likely touched:**
+- `frontend/components/settings/settings-screen.tsx`
+- `frontend/tests/settings/settings-screen.test.tsx`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+## Checkpoint: Composition complete (after Tasks 10–11)
+- [ ] Both tracks' tests pass; no file conflicts
+- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+
+---
+
+## Phase 5: Wiring & sign-off (sequential)
+
+### Task 12: `app/settings/page.tsx` + end-to-end verification
+
+**Description:** Mount `SettingsScreen` as a real route inside the existing
+`app-shell` layout (which already wraps every route in `<Shell>`).
+
+**Acceptance criteria:**
+- [ ] `app/settings/page.tsx` renders `<SettingsScreen />`
+- [ ] `bun run dev`, navigate to `/settings`: the shell (sidebar, topbar) still
+      renders around it, exactly like `/` does
+- [ ] Enter a key, reload the page, the key is still there (masked) — a real
+      manual round-trip, not just the unit test's simulated one
+
+**Verification:**
+- [ ] `cd frontend && bun run build` succeeds
+- [ ] Manual check as described above, via a real running server (verify no
+      stale process is already bound to port 3000 first — `lsof -ti:3000` —
+      per the lesson from app-shell Task 12)
+
+**Dependencies:** Task 11
+
+**Files likely touched:**
+- `frontend/app/settings/page.tsx`
+
+**Estimated scope:** Small: 1 file
+
+---
+
+### Task 13: Success-criteria sign-off pass
+
+**Description:** Map each of `SPEC-settings.md`'s 8 numbered Success Criteria
+to the test(s) that verify it, and confirm the coverage bar.
+
+**Acceptance criteria:**
+- [ ] A sign-off table (in `tasks/plan-settings.md`, matching the precedent
+      from `recipe-framework` and `app-shell`) lists all 8 criteria against
+      their verification
+- [ ] `resolve.ts`, `storage.ts`, `migrations.ts` each individually report
+      ≥95% line coverage (`bun run test --coverage` or equivalent — confirm
+      the exact coverage command/config first, since this hasn't been used
+      elsewhere in `frontend/` yet)
+- [ ] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test` all green
+
+**Verification:**
+- [ ] Full command suite above, run once at the end
+
+**Dependencies:** Tasks 0–12
+
+**Files likely touched:**
+- `tasks/plan-settings.md` (sign-off table appended)
+- Possibly `vitest.config.ts` (if coverage reporting isn't configured yet)
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Module complete (after Task 13)
+- [ ] All 8 success criteria individually verified
+- [ ] `resolve.ts`, `storage.ts`, `migrations.ts` each ≥ 95% line coverage
+- [ ] Full suite + lint + typecheck + build green
+- [ ] **Human review before `catalog` begins consuming `RecipeOverrides`**

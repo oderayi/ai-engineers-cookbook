@@ -52,8 +52,9 @@ persistence (`app-shell`); recipe discovery and the `recipe.env` schema
 ## Confirmed decisions
 
 1. **Frontend-only module.** No API routes, no server component data fetching,
-   no server-side persistence of anything. Next.js 15 App Router, React 19,
-   TypeScript, Tailwind v4, shadcn/ui, **bun** — same stack as `app-shell`.
+   no server-side persistence of anything. Next.js 16 App Router, React 19,
+   TypeScript, Tailwind v4, shadcn/ui, **bun** — same stack as `app-shell`
+   (bumped from 15 during `app-shell` Task 0 — see that spec's note).
 2. **`localStorage` is the only store**, per-device per the intent. The learner's
    own key **is** remembered there (explicitly confirmed). Nothing syncs, nothing
    is encrypted at rest in v1 (see Open Questions).
@@ -96,7 +97,7 @@ persistence (`app-shell`); recipe discovery and the `recipe.env` schema
 
 ## Tech Stack
 
-- Next.js 15 (App Router), React 19, TypeScript 5.x
+- Next.js 16 (App Router), React 19, TypeScript 5.x
 - Tailwind CSS v4, shadcn/ui (`input`, `button`, `label`, `card`, `alert`,
   `tooltip`, `dialog` for clear-all confirm)
 - `zod` — settings schema, parsing, and per-field validation
@@ -193,10 +194,16 @@ export type SettingsV1 = z.infer<typeof settingsV1Schema>;
 export type Settings = SettingsV1; // alias tracks the current version
 ```
 
-The merge policy (`lib/settings/resolve.ts`) — the heart of the module:
+The merge policy (`lib/settings/resolve.ts`) — the heart of the module. Uses
+`RecipeEnvDecl` from this module's own `lib/settings/types.ts` (a minimal,
+local shape — `{ key, provider, required, description }`) rather than
+importing `EnvVar` from `catalog`'s `lib/api/models.ts`: `catalog` is built
+*after* `settings` in the approved order, so settings cannot depend on a file
+that doesn't exist yet. Catalog's richer `EnvVar` is structurally identical,
+so no adapter is needed once it exists:
 
 ```ts
-import type { EnvVar } from "@/lib/api/models"; // recipe-framework contract, shared with catalog
+import type { RecipeEnvDecl } from "@/lib/settings/types";
 
 export type FieldSource = "override" | "global" | "unset";
 
@@ -219,7 +226,7 @@ export interface ResolvedConfig {
 const clean = (v: string | undefined): string => (v ?? "").trim();
 
 export function resolveConfig(
-  recipe: { slug: string; env: EnvVar[] },
+  recipe: { slug: string; env: RecipeEnvDecl[] },
   global: Record<string, string>,
   overrides: Record<string, string>, // overrides[recipe.slug] already selected
 ): ResolvedConfig {
@@ -354,7 +361,7 @@ state (matches `app-shell`).
   back to defaults without throwing into the UI.
 - Mask key inputs by default and keep the "keys stay in your browser, sent only
   when you run a recipe" note visible on both settings surfaces.
-- Run `pnpm typecheck`, `pnpm lint`, `pnpm test` before every commit.
+- Run `bun run typecheck`, `bun run lint`, `bun run test` before every commit.
 - Treat empty settings as a valid state everywhere (no blocking, no error).
 
 **Ask first**
