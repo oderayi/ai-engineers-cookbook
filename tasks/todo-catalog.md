@@ -578,19 +578,19 @@ input type.
 **Track B:** `select-field.tsx`, `switch-field.tsx`, `file-dropzone-field.tsx`
 
 **Acceptance criteria:**
-- [ ] Each renders its `label`/`help` text and a validation message when its
+- [x] Each renders its `label`/`help` text and a validation message when its
       own `react-hook-form` field error is present
-- [ ] `select-field.tsx` renders `options` as the available choices
-- [ ] `slider-field.tsx`/`number-field.tsx` respect `min`/`max`/`step`
-- [ ] `file-dropzone-field.tsx`: native `<input type="file" multiple>` +
+- [x] `select-field.tsx` renders `options` as the available choices
+- [x] `slider-field.tsx`/`number-field.tsx` respect `min`/`max`/`step`
+- [x] `file-dropzone-field.tsx`: native `<input type="file" multiple>` +
       manual drag-and-drop handlers (no new dependency, per the plan's
       architecture decision); respects `accept`/`maxFiles`; shows a
       validation message when `maxFiles` is exceeded
-- [ ] All are otherwise presentational — no direct `localStorage`/network access
+- [x] All are otherwise presentational — no direct `localStorage`/network access
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/fields`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/fields` (7 files, 38/38)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 5 (the `FieldDescriptor` type)
 
