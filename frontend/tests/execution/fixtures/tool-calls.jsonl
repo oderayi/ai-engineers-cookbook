@@ -1,0 +1,16 @@
+{"type":"step","id":"s1","name":"Researching topic","status":"start","detail":null,"ts":0.02}
+{"type":"tool_call","id":"t1","name":"web_search","args":{"query":"population of France 2024"},"result":{"results":[{"title":"France - Wikipedia","snippet":"France has a population of approximately 67.75 million as of 2024."}]},"ts":0.31}
+{"type":"log","level":"info","message":"web_search returned 1 result in 290ms","ts":0.32}
+{"type":"token","text":"Based "}
+{"type":"token","text":"on "}
+{"type":"token","text":"the "}
+{"type":"token","text":"search "}
+{"type":"token","text":"results, "}
+{"type":"tool_call","id":"t2","name":"calculator","args":{"expression":"67750000/1000000"},"result":{"value":67.75},"ts":0.55}
+{"type":"token","text":"France's "}
+{"type":"token","text":"population "}
+{"type":"token","text":"is "}
+{"type":"token","text":"about "}
+{"type":"token","text":"67.75 million."}
+{"type":"step","id":"s1","name":"Researching topic","status":"finish","detail":"done","ts":0.61}
+{"type":"result","data":{"answer":"France's population is about 67.75 million.","sources":["https://en.wikipedia.org/wiki/France"]},"ts":0.62}

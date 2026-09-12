@@ -1,0 +1,3 @@
+{"type":"step","id":"s1","name":"Calling language model","status":"start","detail":null,"ts":0.02}
+{"type":"token","text":"Generating "}
+{"type":"error","error_type":"upstream_error","message":"The upstream model provider returned a 503 Service Unavailable error.","recoverable":true,"ts":2.4}

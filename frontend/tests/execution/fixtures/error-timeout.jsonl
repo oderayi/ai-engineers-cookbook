@@ -1,0 +1,4 @@
+{"type":"step","id":"s1","name":"Processing large dataset","status":"start","detail":null,"ts":0.03}
+{"type":"token","text":"Analyzing "}
+{"type":"token","text":"records..."}
+{"type":"error","error_type":"timeout","message":"The run exceeded the 90 second time limit and was cancelled.","recoverable":false,"ts":90.0}

@@ -1,0 +1,8 @@
+{"type":"step","id":"s1","name":"Generating summary","status":"start","detail":null,"ts":0.05}
+{"type":"token","text":"The "}
+{"type":"token","text":"quick "}
+{"type":"token","text":"brown "}
+{"type":"token","text":"fox "}
+{"type":"token","text":"jumps."}
+{"type":"step","id":"s1","name":"Generating summary","status":"finish","detail":"done","ts":0.42}
+{"type":"result","data":{"summary":"The quick brown fox jumps.","word_count":5},"ts":0.43}

@@ -1,0 +1,4 @@
+{"type":"step","id":"s1","name":"Generating report","status":"start","detail":null,"ts":0.04}
+{"type":"token","text":"Section 1: Introduction... "}
+{"type":"token","text":"Section 2: Detailed analysis... "}
+{"type":"error","error_type":"output_limit","message":"The run produced more than 256 KB of output and was cancelled.","recoverable":false,"ts":12.7}

@@ -1,0 +1,2 @@
+{"type":"step","id":"s1","name":"Parsing input file","status":"start","detail":null,"ts":0.02}
+{"type":"error","error_type":"recipe_error","message":"Unhandled exception in recipe code: KeyError('summary')","recoverable":false,"ts":0.35}

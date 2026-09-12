@@ -1,0 +1,2 @@
+{"type":"step","id":"s1","name":"Validating input","status":"start","detail":null,"ts":0.01}
+{"type":"error","error_type":"bad_input","message":"The uploaded file is not a valid CSV: missing a header row.","recoverable":true,"ts":0.18}

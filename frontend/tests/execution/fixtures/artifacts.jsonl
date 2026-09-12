@@ -1,0 +1,8 @@
+{"type":"step","id":"s1","name":"Analyzing input","status":"start","detail":null,"ts":0.02}
+{"type":"token","text":"Analysis complete."}
+{"type":"artifact","id":"a1","kind":"json","name":"Sentiment Analysis","data":{"score":0.87,"labels":["positive","confident"]},"url":null}
+{"type":"artifact","id":"a2","kind":"table","name":"Monthly Sales","data":{"columns":["Month","Revenue"],"rows":[["Jan",1000],["Feb",1200],["Mar",950]]},"url":null}
+{"type":"artifact","id":"a3","kind":"markdown","name":"Summary Report","data":"# Sales Report\n\nRevenue **grew 20%** quarter over quarter, driven mainly by the *Northeast* region.","url":null}
+{"type":"artifact","id":"a4","kind":"file","name":"full-report.pdf","data":null,"url":"/artifacts/runs/run-42/full-report.pdf"}
+{"type":"step","id":"s1","name":"Analyzing input","status":"finish","detail":"done","ts":1.4}
+{"type":"result","data":{"artifact_count":4,"status":"ok"},"ts":1.41}

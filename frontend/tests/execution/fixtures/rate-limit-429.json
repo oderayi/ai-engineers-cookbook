@@ -1,0 +1,7 @@
+{
+  "error": "rate_limited",
+  "scope": "trial_daily",
+  "message": "You've used your 2 free runs today. Add your own API key or clone the project locally to keep going.",
+  "retry_after_seconds": 34567,
+  "cta": "add_key"
+}

@@ -1,0 +1,21 @@
+{"type":"step","id":"s1","name":"Generating response","status":"start","detail":null,"ts":0.03}
+{"type":"token","text":"Here "}
+{"type":"token","text":"is "}
+{"type":"token","text":"the "}
+{"type":"token","text":"first "}
+{"type":"token","text":"part "}
+{"type":"token","text":"of "}
+{"type":"token","text":"the "}
+{"type":"token","text":"answer "}
+{"type":"token","text":"with "}
+{"type":"token","text":"several "}
+{"type":"token","text":"important "}
+{"type":"token","text":"details "}
+{"type":"token","text":"about "}
+{"type":"step","id":"s2","name":"Fetching supporting data","status":"start","detail":null,"ts":3.1}
+{"type":"token","text":"the "}
+{"type":"token","text":"topic "}
+{"type":"token","text":"at "}
+{"type":"token","text":"hand, "}
+{"type":"token","text":"including "}
+{"type":"error","error_type":"upstream_error","message":"The upstream model provider connection was reset mid-stream. Partial output is shown above.","recoverable":true,"ts":6.8}
