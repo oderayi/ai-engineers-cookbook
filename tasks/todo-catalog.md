@@ -608,29 +608,42 @@ input type.
 components, `settings`' `<RecipeOverrides recipe={recipe} />`, and the Run
 button, exactly per the spec's Code Style sample.
 
+**Deviation from the plan, documented at implementation time:** the spec's
+literal signature is `RunForm({ recipe }: { recipe: RecipeDetail })` — this
+implementation adds an optional `onSubmit` prop and wraps the component in
+`forwardRef` for the imperative handle below (both extensions the spec's
+own prose already implies: "onSubmit hands `{ params, recipeSlug }`
+upward"), rather than inventing an untyped side channel for either.
+
 **Acceptance criteria:**
-- [ ] `RunForm({ recipe }: { recipe: RecipeDetail })` — matches the spec
-      sample's signature exactly
-- [ ] `useForm` is wired with `zodResolver(validator)` from Task 5's compiled
-      validator
-- [ ] `<RecipeOverrides recipe={recipe} />` is imported directly from
+- [x] `RunForm({ recipe }: { recipe: RecipeDetail })` — matches the spec
+      sample's signature exactly (plus the documented `onSubmit`/`ref`
+      extensions above)
+- [x] `useForm` is wired with `zodResolver(validator)` from Task 5's compiled
+      validator — `mode: "onChange"` so the Run button's disabled state
+      tracks validity live, with an explicit `trigger()` on mount/validator
+      change (react-hook-form's `formState.isValid` doesn't reflect reality
+      until a validation pass actually runs)
+- [x] `<RecipeOverrides recipe={recipe} />` is imported directly from
       `@/components/settings/recipe-overrides` and passed `recipe` verbatim
       (no adapter, no field remapping — this is the whole point of the
       structural-compatibility work done in `settings` and Task 1)
-- [ ] Run button is disabled until the form is valid; `onSubmit` receives
+- [x] Run button is disabled until the form is valid; `onSubmit` receives
       `{ params, recipeSlug }` — for now, hands it to an `onSubmit` prop
       (default: a `// TODO(execution)` no-op) rather than doing anything
       itself
-- [ ] Exposes a way for a parent (`recipe-view.tsx`, Task 15) to pre-fill the
-      form from an example's `params` (Task 11's "Try this example") — e.g.
-      an imperative handle or a controlled `defaultValues`-reset prop; your
-      call on the exact mechanism, document it
+- [x] Exposes a `forwardRef` imperative handle (`fillExample(params)`,
+      `reset()` + an immediate re-`trigger()`) so a parent (`recipe-view.tsx`,
+      Task 15) can pre-fill the form from an example's `params`
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/run-form`
-- [ ] `bun run typecheck && bun run lint`
-- [ ] Manual: the table-driven fixture recipes from Task 2 each render a
-      working form (every control type appears at least once across them)
+- [x] Tests pass: `cd frontend && bun run test catalog/run-form` (11/11)
+- [x] `bun run typecheck && bun run lint`
+- [x] Manual: every Task 2 fixture recipe renders without crashing, and
+      every one of the 7 `FieldDescriptor` control types is produced by at
+      least one fixture — backed by a real test, not eyeballed, which
+      surfaced (and led to fixing) a real gap: no fixture had a boolean
+      field or a single-bound int field before this task
 
 **Dependencies:** Tasks 5, 13, and `settings`' `RecipeOverrides` (already built)
 
@@ -643,8 +656,10 @@ button, exactly per the spec's Code Style sample.
 ---
 
 ## Checkpoint: Run form complete
-- [ ] Table-driven schema→form tests pass; `bun run test`, `typecheck`, `lint` clean
-- [ ] **Human review before page-level composition**
+- [x] Table-driven schema→form tests pass; `bun run test` (48 files,
+      362/362), `typecheck`, `lint`, `build` clean
+- [x] **Human review before page-level composition** — standing "just
+      proceed" instruction covers this checkpoint
 
 ---
 
