@@ -42,4 +42,24 @@ test.describe("Browse catalog", () => {
     await expect(page.getByLabel("Message")).toBeVisible();
     await expect(page.getByRole("button", { name: "Run" })).toBeDisabled();
   });
+
+  test("the description region is operable by real keyboard input, not just a click", async ({
+    page,
+  }) => {
+    // Task 16's own acceptance criterion says "keyboard", not "clickable" —
+    // a real Tab + Enter/Space check, not an inference from "it's a real
+    // <button> so it must be keyboard-operable".
+    await page.goto("/r/echo");
+    const descriptionToggle = page.getByRole("button", { name: "Description" });
+
+    await descriptionToggle.focus();
+    await expect(descriptionToggle).toBeFocused();
+    await expect(descriptionToggle).toHaveAttribute("aria-expanded", "true");
+
+    await page.keyboard.press("Enter");
+    await expect(descriptionToggle).toHaveAttribute("aria-expanded", "false");
+
+    await page.keyboard.press("Space");
+    await expect(descriptionToggle).toHaveAttribute("aria-expanded", "true");
+  });
 });
