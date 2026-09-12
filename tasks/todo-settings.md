@@ -55,10 +55,10 @@ specified — the single most important function in this module, since
 `catalog` and `execution` both consume its output shape.
 
 **Acceptance criteria:**
-- [ ] Matches the spec's Code Style sample: `FieldSource = "override" | "global" | "unset"`,
+- [x] Matches the spec's Code Style sample: `FieldSource = "override" | "global" | "unset"`,
       `ResolvedField { key, value, source, required }`,
       `ResolvedConfig { config, fields, missingRequired }`
-- [ ] Merge table, every case: override present → `"override"`; only global set
+- [x] Merge table, every case: override present → `"override"`; only global set
       → `"global"`; neither → `"unset"` and absent from `config`;
       whitespace-only override falls through to global; whitespace-only global
       falls through to unset; an override for an undeclared key never appears
@@ -91,19 +91,18 @@ specified — the single most important function in this module, since
 and its forward-only migration runner.
 
 **Acceptance criteria:**
-- [ ] `storage.ts`: `STORAGE_KEY = "skillet.settings"`; `read()` parses via
+- [x] `storage.ts`: `STORAGE_KEY = "skillet.settings"`; `read()` parses via
       the Zod schema (running migrations first — see below), `write(settings)`,
       `clear()`. Malformed JSON, a schema-invalid blob, or a `version` newer
       than `CURRENT_VERSION` all fall back to `emptySettings()`-shaped defaults
-      without throwing (defer to Task 4's `defaults.ts` for the actual
-      default-object constructor — stub inline here if Task 4 isn't merged yet,
-      reconcile at integration)
-- [ ] `migrations.ts`: `migrate(raw: unknown): SettingsV1`. An unversioned/
+      without throwing (reconciled at integration to import the real
+      `emptySettings()` from Task 4's `defaults.ts` instead of the inline stub)
+- [x] `migrations.ts`: `migrate(raw: unknown): SettingsV1`. An unversioned/
       legacy blob upgrades to `CURRENT_VERSION` with values preserved; each
       migration step is a pure function, independently tested
-- [ ] A fully-populated `SettingsV1` survives a write→read round-trip
+- [x] A fully-populated `SettingsV1` survives a write→read round-trip
       byte-for-byte (after `customBackendUrl` normalization)
-- [ ] Unknown top-level fields in a stored blob are stripped, not preserved
+- [x] Unknown top-level fields in a stored blob are stripped, not preserved
 
 **Verification:**
 - [ ] Tests pass: `cd frontend && bun run test settings/storage settings/migrations`
@@ -130,13 +129,18 @@ reuse this, per `workspace`'s spec explicitly saying to reuse it rather than
 fork one).
 
 **Acceptance criteria:**
-- [ ] Matches the spec's signature: `useLocalStorage<T>(key, fallback, parse)
+- [x] Matches the spec's signature: `useLocalStorage<T>(key, fallback, parse)
       -> readonly [T, setter, clear]`
-- [ ] SSR-safe: initial render returns `fallback` (hydration happens in an
-      effect), no `window` access during render
-- [ ] A `localStorage.getItem`/`setItem` throwing (private mode, quota) is
+- [x] SSR-safe — **implemented via `useSyncExternalStore`, not the literal
+      "fallback-then-effect" two-render sample in the spec**: `getServerSnapshot`
+      returns `fallback` for the server render, `getSnapshot` reads the real
+      value on the client, so hydration needs no separate effect-driven second
+      render and no `react-hooks/set-state-in-effect` suppression. Matches the
+      pattern already established by `use-local-storage-boolean.ts` and
+      `theme-toggle.tsx`. No `window` access during render either way.
+- [x] A `localStorage.getItem`/`setItem` throwing (private mode, quota) is
       caught — state still updates in-memory for the session, no crash
-- [ ] Cross-tab: a `storage` event for the same key updates the hook's value;
+- [x] Cross-tab: a `storage` event for the same key updates the hook's value;
       a `storage` event for a different key is ignored
 
 **Verification:**
@@ -159,11 +163,11 @@ fork one).
 object) and the env-key → provider display metadata (label, docs URL) map.
 
 **Acceptance criteria:**
-- [ ] `emptySettings(): SettingsV1` returns `{ version: CURRENT_VERSION, global: {}, customBackendUrl: "", overrides: {} }`
-- [ ] `providers.ts` exports a `Record<string, { label: string; docsUrl?: string }>`
+- [x] `emptySettings(): SettingsV1` returns `{ version: CURRENT_VERSION, global: {}, customBackendUrl: "", overrides: {} }`
+- [x] `providers.ts` exports a `Record<string, { label: string; docsUrl?: string }>`
       seeded with at least `OPENAI_API_KEY` (per the spec's Open Question 6
       leaning — "OpenAI at minimum")
-- [ ] Both are pure data/functions with no DOM or `localStorage` access
+- [x] Both are pure data/functions with no DOM or `localStorage` access
 
 **Verification:**
 - [ ] Tests pass: `cd frontend && bun run test settings/defaults settings/providers`
@@ -181,10 +185,21 @@ object) and the env-key → provider display metadata (label, docs URL) map.
 ---
 
 ## Checkpoint: Parallel batch 1 merged (after Tasks 1–4)
-- [ ] Each track's own tests pass in isolation
-- [ ] No file conflicts (disjoint file sets — confirm via `git status` before staging)
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
-- [ ] Reconcile Task 2's stubbed default-object reference with Task 4's real `emptySettings()`
+- [x] Each track's own tests pass in isolation
+- [x] No file conflicts (disjoint file sets — confirmed via `git status` before staging)
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+      (19 files, 124/124 tests)
+- [x] Reconcile Task 2's stubbed default-object reference with Task 4's real `emptySettings()`
+      (were value-identical; `storage.ts` now imports it)
+- [x] Task 3's hook rewritten to `useSyncExternalStore` (see Task 3's note above)
+      instead of the subagent's `useState`+`useEffect`+`eslint-disable` version;
+      its test file adjusted accordingly (one test re-targeted from asserting a
+      two-render hydration race to asserting an immediate correct read; two
+      storage-event tests fixed to write to `localStorage` before dispatching
+      the synthetic event, matching real cross-tab browser behavior)
+- [x] Committed as 4 separate task commits (9846909, ee5873b, 33798c0, 465389b),
+      ordered so each leaves the tree buildable (defaults.ts before storage.ts,
+      which depends on it)
 - [ ] **Human review before hook composition**
 
 ---
