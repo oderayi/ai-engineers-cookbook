@@ -173,8 +173,8 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Hooks complete (after Tasks 5-6)
-- [ ] Both hooks' tests pass; typecheck/lint clean
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 4
+- [x] Both hooks' tests pass; typecheck/lint clean
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 4
 
 ---
 
