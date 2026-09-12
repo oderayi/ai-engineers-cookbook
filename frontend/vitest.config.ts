@@ -10,6 +10,12 @@ export default defineConfig({
     globals: false,
     include: ["tests/**/*.test.{ts,tsx}"],
     exclude: ["e2e/**", "node_modules/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["lib/**/*.ts", "hooks/**/*.ts", "components/**/*.tsx"],
+      exclude: ["components/ui/**"], // shadcn-generated, not hand-written
+    },
   },
   resolve: {
     alias: {
