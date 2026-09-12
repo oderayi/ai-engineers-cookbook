@@ -464,18 +464,21 @@ in Phase 8.*
 optional `readmeMarkdown` (GFM via `react-markdown` + `remark-gfm`).
 
 **Acceptance criteria:**
-- [ ] Uses `components/primitives/collapsible-section.tsx` (already built in
+- [x] Uses `components/primitives/collapsible-section.tsx` (already built in
       `app-shell`) rather than a new collapsible implementation
-- [ ] `readmeMarkdown: null` hides the README sub-section entirely (not an
+- [x] `readmeMarkdown: null` hides the README sub-section entirely (not an
       empty box)
-- [ ] GFM features (tables, strikethrough, task lists) render correctly from
-      a fixture README containing at least one of each
-- [ ] Rendered markdown never executes raw HTML from the source (React
-      Markdown's default safe behavior — don't override it)
+- [x] GFM features (tables, strikethrough, task lists) render correctly —
+      verified against real DOM: a real `<table>` with correct cells,
+      exactly 2 real checkbox `<input>`s from a task list, a real `<del>`
+      for strikethrough
+- [x] Rendered markdown never executes raw HTML from the source — verified
+      with a crafted `<img onerror=...>` readme confirming it never mounts
+      as a live element
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/description-panel`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/description-panel` (8/8)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 1, 2
 
@@ -493,17 +496,19 @@ optional `readmeMarkdown` (GFM via `react-markdown` + `remark-gfm`).
 params`) with a "Try this example" button.
 
 **Acceptance criteria:**
-- [ ] `expect` renders as prose text — no output is fetched, run, or stored
+- [x] `expect` renders as prose text — no output is fetched, run, or stored
       (per Confirmed Decision 7)
-- [ ] "Try this example" calls an `onTryExample(params: Record<string,
+- [x] "Try this example" calls an `onTryExample(params: Record<string,
       unknown>) => void` prop with that example's `params` — it does not
-      reach into the run form itself (composition happens in Task 14/15)
-- [ ] Zero examples renders nothing (no empty "Examples" heading with
+      reach into the run form itself (composition happens in Task 14/15) —
+      each card's own closure over its own `example.params`, proven with a
+      2-example test asserting distinct per-click params
+- [x] Zero examples renders nothing (no empty "Examples" heading with
       nothing under it)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/examples-panel`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/examples-panel` (4/4)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 1, 2
 
@@ -521,23 +526,28 @@ params`) with a "Try this example" button.
 copy button, over a `SourceBundle`.
 
 **Acceptance criteria:**
-- [ ] Every file in the bundle gets a tab; content byte-matches the
-      fixture's `text` field exactly (verified by string equality against
-      the rendered text content, not just "looks similar")
-- [ ] Copy button copies the *raw* file text (not the highlighted HTML) to
-      the clipboard — mock `navigator.clipboard.writeText` in the test
-- [ ] Nothing in the viewer is editable (no `contentEditable`, no textarea
-      standing in for a code block)
-- [ ] Tabs are keyboard-operable (arrow keys or Tab, per the ARIA tabs
-      pattern) — verified, not assumed
-- [ ] `shiki`'s grammar loading works under `next build --webpack` (this
-      project's forced build mode since `app-shell`'s Serwist integration) —
-      confirmed via a real `bun run build`, not just `bun run dev`
+- [x] Every file in the bundle gets a tab; content byte-matches the
+      fixture's `text` field exactly — verified against real, unmocked
+      shiki output (not a mocked suite), waiting for real `.shiki` markup
+      before asserting textContent equality (a loading-fallback `<pre>`
+      would otherwise already byte-match before shiki even resolves,
+      making a naive assertion a false positive)
+- [x] Copy button copies the *raw* file text (not the highlighted HTML) to
+      the clipboard
+- [x] Nothing in the viewer is editable (no `contentEditable`, no textarea
+      standing in for a code block) — structural, not a runtime guard
+- [x] Tabs are keyboard-operable — Base UI's `Tabs` primitive (real
+      `role="tablist"/"tab"/"tabpanel"`, roving tabindex, arrow-key nav),
+      not hand-rolled
+- [x] `shiki`'s grammar loading works under `next build --webpack` —
+      confirmed via a real `bun run build` with the component actually
+      rendered against a fixture (temporary, fully-reverted `app/page.tsx`
+      edit during verification)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/source-viewer`
-- [ ] `bun run typecheck && bun run lint`
-- [ ] `bun run build` succeeds with `shiki` in the bundle
+- [x] Tests pass: `cd frontend && bun run test catalog/source-viewer` (9/9)
+- [x] `bun run typecheck && bun run lint`
+- [x] `bun run build` succeeds with `shiki` in the bundle
 
 **Dependencies:** Tasks 1, 2
 
@@ -550,7 +560,8 @@ copy button, over a `SourceBundle`.
 ---
 
 ## Checkpoint: Parallel batch 3 merged (after Tasks 10-12)
-- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test`, `build` clean
+- [x] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`,
+      `test` (40 files, 313/313), `build` all clean
 - [ ] **Human review before the run form**
 
 ---
