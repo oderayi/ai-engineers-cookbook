@@ -89,6 +89,15 @@ describe("RunForm", () => {
     });
   });
 
+  it("exposes an imperative handle to focus the form's first field", () => {
+    const ref = createRef<RunFormHandle>();
+    render(<RunForm ref={ref} recipe={promptBasics} />);
+
+    ref.current?.focus();
+
+    expect(screen.getByLabelText("Question")).toHaveFocus();
+  });
+
   it("pre-filling via the imperative handle also enables the Run button when the example is valid", async () => {
     const ref = createRef<RunFormHandle>();
     render(<RunForm ref={ref} recipe={promptBasics} />);

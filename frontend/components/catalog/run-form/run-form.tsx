@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Resolver } from "react-hook-form";
@@ -41,9 +41,15 @@ export interface RunFormProps {
  * values from a prior manual edit don't linger) and re-validates
  * immediately, so the Run button's enabled state reflects the newly-filled
  * form right away rather than waiting for the user's next keystroke.
+ *
+ * `focus` moves keyboard focus into the form (its first focusable field) —
+ * `recipe-view.tsx` calls this right after `fillExample`, since success
+ * criterion 6 requires "Try this example" to both pre-fill AND focus the
+ * form, not just silently update it out of view.
  */
 export interface RunFormHandle {
   fillExample: (params: Record<string, unknown>) => void;
+  focus: () => void;
 }
 
 /**
@@ -79,6 +85,7 @@ export const RunForm = forwardRef<RunFormHandle, RunFormProps>(function RunForm(
     mode: "onChange",
   });
   const { register, control, handleSubmit, formState, reset, trigger } = form;
+  const formRef = useRef<HTMLFormElement>(null);
 
   // react-hook-form's `formState.isValid` starts out `true` until the first
   // validation pass actually runs (it doesn't validate on mount by itself) —
@@ -97,6 +104,12 @@ export const RunForm = forwardRef<RunFormHandle, RunFormProps>(function RunForm(
         reset(params);
         void trigger();
       },
+      focus: () => {
+        const firstField = formRef.current?.querySelector<HTMLElement>(
+          "input, textarea, select, button[role='combobox'], [role='switch'], [role='slider']"
+        );
+        firstField?.focus();
+      },
     }),
     [reset, trigger]
   );
@@ -112,7 +125,12 @@ export const RunForm = forwardRef<RunFormHandle, RunFormProps>(function RunForm(
   }
 
   return (
-    <form onSubmit={(event) => void handleSubmit(onValidSubmit)(event)} className="flex flex-col gap-4" noValidate>
+    <form
+      ref={formRef}
+      onSubmit={(event) => void handleSubmit(onValidSubmit)(event)}
+      className="flex flex-col gap-4"
+      noValidate
+    >
       {fields.map((field) => {
         switch (field.control) {
           case "text":
