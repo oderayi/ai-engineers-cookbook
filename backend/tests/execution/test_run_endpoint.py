@@ -165,6 +165,45 @@ def test_output_limit_breach_is_wired_through_as_terminal_error(tmp_path: Path) 
     assert sum(e["type"] in ("result", "error") for e in events) == 1
 
 
+def test_timeout_breach_is_wired_through_as_terminal_error(tmp_path: Path, monkeypatch) -> None:
+    """Doesn't re-derive `recipe-framework`'s own timeout enforcement
+    (already covered by its `test_executor_run.py`) — only proves THIS
+    endpoint carries a terminal `error_type: timeout` through correctly.
+
+    A real 90s timeout is impractical to wait out in a test — `stream.py`
+    calls `execute(...)` with no explicit `timeout_s` (relying on its
+    90s default, by design: only recipe-framework's fixed limits apply,
+    never a client-configurable one), so this monkeypatches the `execute`
+    name `stream.py` actually calls through to, wrapping it with a 0.05s
+    timeout instead, rather than trying to override a keyword default.
+    """
+    from skillet.execution import stream as stream_module
+    from skillet.recipe.executor import execute as real_execute
+
+    async def fast_timeout_execute(loaded, params, *, config, files, **kwargs):
+        async for event in real_execute(loaded, params, config=config, files=files, timeout_s=0.05):
+            yield event
+
+    monkeypatch.setattr(stream_module, "execute", fast_timeout_execute)
+
+    root = make_recipe(
+        tmp_path,
+        "import asyncio\n\n"
+        "from skillet.recipe import Params as BaseParams\n\n"
+        "class Params(BaseParams):\n    pass\n\n"
+        "async def run(params, ctx):\n"
+        "    await asyncio.sleep(10)\n"
+        "    await ctx.emit.result({})\n",
+    )
+    client = TestClient(create_app(recipes_root=root))
+    resp = client.post("/recipes/x/run", data={"params": "{}", "config": "{}"})
+
+    events = [json.loads(line) for line in iter_sse_data_lines(resp.text)]
+    assert events[-1]["type"] == "error"
+    assert events[-1]["error_type"] == "timeout"
+    assert sum(e["type"] in ("result", "error") for e in events) == 1
+
+
 def test_first_byte_arrives_well_before_recipe_finishes(tmp_path: Path) -> None:
     """A deliberately-slow fixture recipe proves the response isn't buffered
     whole before any of it reaches the client — over a real socket, since
