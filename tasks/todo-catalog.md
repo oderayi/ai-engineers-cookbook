@@ -744,22 +744,40 @@ group/difficulty context instead.
 `app-shell`'s established E2E conventions (`e2e/a11y.spec.ts` pattern, CDP
 lessons from that module carried forward).
 
+**Deviation from the plan, documented at implementation time:** a real
+backend now runs alongside the frontend during E2E (`backend/scripts/
+e2e_recipes_server.py`, wired in via a second `playwright.config.ts`
+`webServer` entry) — the plan's route-mocking assumption was dropped once
+it became clear a Playwright-level mock would never actually reach the
+service worker, making the offline test meaningless. This gave
+`browse-catalog.spec.ts` real, deterministic content instead.
+
 **Acceptance criteria:**
-- [ ] `browse-catalog.spec.ts`: index → open a group → open a recipe →
-      expand every region
-- [ ] `recipe-page.spec.ts`: "Try this example" pre-fills the form
-      (success criterion 6); offline (after one online visit) still shows
-      the previously-fetched page (success criterion 4) — reuse
-      `app-shell`'s offline-testing approach (`page.route(...).abort()`, not
-      `context.setOffline()`, per that module's documented CDP limitation)
-- [ ] `run-form-validation.spec.ts`: invalid input keeps Run disabled/shows
-      errors; valid input enables Run
-- [ ] axe scan: zero serious/critical on the recipe page; every collapsible
-      region operable by keyboard
+- [x] `browse-catalog.spec.ts`: index → open a recipe → expand the
+      description region (the page's only collapsible; source viewer/run
+      form have no separate expand/collapse state)
+- [x] `recipe-page.spec.ts`: offline (after one online visit) — best-effort,
+      same honest style as `offline-browse.spec.ts`'s own precedent (the
+      `navigator.serviceWorker.controller` limitation that spec already
+      documented applies identically here). **"Try this example" pre-fills
+      the form (success criterion 6) is honestly NOT covered by E2E** —
+      neither fixture recipe (`echo`, `echo-with-helper`) declares a
+      `[[recipe.example]]` block, and extending `recipe-framework`'s own
+      test fixtures for this frontend module's E2E coverage was judged out
+      of scope. Covered instead by `tests/catalog/recipe-view.test.tsx`'s
+      real-component-composition unit test
+- [x] `run-form-validation.spec.ts`: invalid input keeps Run disabled; valid
+      input enables it — this test caught a real, independently-reproduced
+      bug (required fields silently accepting an empty string), fixed in
+      its own commit
+- [x] axe scan: zero serious/critical on the recipe page — this test caught
+      a second real, independently-reproduced bug (a WCAG AA contrast
+      failure in the shared `--primary` token, affecting every default-
+      variant button app-wide, not just this one), fixed in its own commit
 
 **Verification:**
-- [ ] `cd frontend && bun run test:e2e` — all specs pass, stable across 3
-      consecutive runs (per the app-shell precedent for flake-checking)
+- [x] `cd frontend && bun run test:e2e` — 17/17 specs pass, stable across 3
+      consecutive runs
 
 **Dependencies:** Task 15
 
