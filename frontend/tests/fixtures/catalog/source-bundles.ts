@@ -63,7 +63,8 @@ export const catalogFixtureSourceBundles: Record<string, SourceBundle> = {
         language: "python",
         text:
           "from skillet.recipe import Params as BaseParams\n\n\n" +
-          "class Params(BaseParams):\n    query: str\n    keyword_weight: int = 50\n\n\n" +
+          "class Params(BaseParams):\n    query: str\n    keyword_weight: int = 50\n" +
+          "    max_results: int = 5\n    rerank: bool = False\n\n\n" +
           "async def run(params: Params, ctx) -> None:\n    await ctx.emit.result({})\n",
         sha256: "fixture-sha-hybrid-search-recipe-py",
       },

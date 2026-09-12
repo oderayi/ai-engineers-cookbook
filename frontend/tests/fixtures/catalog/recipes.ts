@@ -152,6 +152,14 @@ export const hybridSearch: RecipeDetail = {
     properties: {
       query: { title: "Query", type: "string" },
       keyword_weight: { title: "Keyword Weight", type: "integer", minimum: 0, maximum: 100, default: 50 },
+      // Only a minimum bound (no maximum) -> "number", not "slider" -- the
+      // other 3 recipes' int/number fields all have both bounds, which left
+      // this control type (and "switch", below) entirely uncovered across
+      // Task 2's fixture set. Added here rather than inventing a 5th
+      // recipe, closing a real gap surfaced by Task 14's own manual
+      // verification step ("every control type appears at least once").
+      max_results: { title: "Max Results", type: "integer", minimum: 1, default: 5 },
+      rerank: { title: "Rerank", type: "boolean", default: false },
     },
     required: ["query"],
   },
