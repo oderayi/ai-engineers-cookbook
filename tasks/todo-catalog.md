@@ -341,16 +341,16 @@ one usage in `app/layout.tsx` was replaced with real fetched data.
 `app-shell`'s open question 2 — no separate marketing hero for v1).
 
 **Acceptance criteria:**
-- [ ] Dismissal persists via `useLocalStorageBoolean` (already built,
+- [x] Dismissal persists via `useLocalStorageBoolean` (already built,
       `frontend/hooks/use-local-storage-boolean.ts`) — reuse it, don't fork
       a new localStorage flag hook
-- [ ] Dismissed state survives a reload; a fresh browser (no stored value)
+- [x] Dismissed state survives a reload; a fresh browser (no stored value)
       shows the banner
-- [ ] A close button is keyboard-operable and has an accessible label
+- [x] A close button is keyboard-operable and has an accessible label
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/intro-banner`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/intro-banner` (7/7)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 0 only (no catalog-specific data needed)
 
@@ -368,17 +368,18 @@ one usage in `app/layout.tsx` was replaced with real fetched data.
 (substring match only, per the spec's leaning on Open Question 3).
 
 **Acceptance criteria:**
-- [ ] Fully controlled (`value`/`onChange`) — filtering logic itself lives
+- [x] Fully controlled (`value`/`onChange`) — filtering logic itself lives
       in `catalog-index.tsx` (Task 9), this component is just the input
-- [ ] Debounced or not is your call, but document the choice; either way
-      `onChange` must not be lossy (every keystroke's final value is
-      eventually delivered)
-- [ ] Clearing the input (a visible "clear" affordance or just deleting the
-      text) restores the full list
+- [x] No debounce: every keystroke calls `onChange` immediately and
+      synchronously, so nothing is ever dropped/delayed — documented as
+      deliberately not worth trading correctness for a marginal perf win
+      on a small, in-memory list
+- [x] A visible clear (X) button, shown only when `value` is non-empty,
+      calls `onChange("")`
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/recipe-filter`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/recipe-filter` (6/6)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -391,7 +392,8 @@ one usage in `app/layout.tsx` was replaced with real fetched data.
 ---
 
 ## Checkpoint: Parallel batch 2 merged (after Tasks 7-8)
-- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test` clean
+- [x] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test`
+      clean (36 files, 283/283 tests)
 
 ---
 
