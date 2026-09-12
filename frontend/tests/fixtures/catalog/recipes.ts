@@ -114,7 +114,17 @@ export const embeddings101: RecipeDetail = {
         title: "Documents",
         type: "array",
         items: { type: "string", format: "binary" },
-        json_schema_extra: { accept: [".txt", ".md"], maxFiles: 3 },
+        // `json_schema_extra`'s dict keys land flat on the property object,
+        // snake_case, exactly as the recipe author wrote them -- Pydantic's
+        // camelCase alias generator only applies to the API's own response
+        // models (schemas.py's CamelModel), never to inputSchema's raw JSON
+        // Schema content. Verified against a real `model_json_schema()`
+        // call and against SPEC-recipe-framework.md's own worked example
+        // (`json_schema_extra={"accept": [...], "max_files": 10}`) --
+        // this fixture previously had this wrong (camelCase, nested under
+        // a "json_schema_extra" key that doesn't exist on the wire).
+        accept: [".txt", ".md"],
+        max_files: 3,
       },
     },
     required: ["texts"],

@@ -72,8 +72,12 @@ describe("catalog fixtures", () => {
     const hasFileField = catalogFixtureRecipes.some((r) => {
       const properties = r.inputSchema.properties as Record<string, unknown> | undefined;
       return Object.values(properties ?? {}).some((prop) => {
-        const p = prop as { json_schema_extra?: { maxFiles?: number } };
-        return typeof p.json_schema_extra?.maxFiles === "number";
+        // `max_files` lands flat and snake_case on the property object --
+        // Pydantic's json_schema_extra dict keys pass through verbatim,
+        // never camelCased (that alias generator only applies to the API's
+        // own response models, not to inputSchema's raw JSON Schema).
+        const p = prop as { max_files?: number };
+        return typeof p.max_files === "number";
       });
     });
     expect(hasFileField).toBe(true);
