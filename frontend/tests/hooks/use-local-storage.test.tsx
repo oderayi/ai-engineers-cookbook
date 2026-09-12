@@ -168,4 +168,48 @@ describe("useLocalStorage", () => {
 
     expect(result.current[0]).toBe("fallback");
   });
+
+  // `useSyncExternalStore` requires `getSnapshot` to return a referentially
+  // *stable* value when the underlying store hasn't changed — React checks
+  // this on every render (not just ones triggered by the store) and throws
+  // "The result of getSnapshot should be cached to avoid an infinite loop"
+  // when it isn't. A `parse` that allocates a new object every call (e.g.
+  // `JSON.parse` into an object/array, as every real caller in this codebase
+  // does) would violate that if `getSnapshot` re-parsed on every invocation
+  // — this test locks in that the hook caches by raw string instead.
+  it("returns the same object reference across re-renders when the stored value hasn't changed", () => {
+    type Blob = { count: number };
+    const parseObject = (raw: string): Blob => JSON.parse(raw) as Blob;
+    window.localStorage.setItem("object.key", JSON.stringify({ count: 1 }));
+
+    const { result, rerender } = renderHook(() =>
+      useLocalStorage("object.key", { count: 0 }, parseObject),
+    );
+    const first = result.current[0];
+
+    // Force a re-render with nothing in storage having changed.
+    rerender();
+    const second = result.current[0];
+
+    expect(second).toBe(first);
+  });
+
+  it("returns a fresh parsed reference only after the stored value actually changes", () => {
+    type Blob = { count: number };
+    const parseObject = (raw: string): Blob => JSON.parse(raw) as Blob;
+    window.localStorage.setItem("object-change.key", JSON.stringify({ count: 1 }));
+
+    const { result } = renderHook(() =>
+      useLocalStorage("object-change.key", { count: 0 }, parseObject),
+    );
+    const first = result.current[0];
+    expect(first).toEqual({ count: 1 });
+
+    act(() => {
+      result.current[1]({ count: 2 });
+    });
+
+    expect(result.current[0]).toEqual({ count: 2 });
+    expect(result.current[0]).not.toBe(first);
+  });
 });
