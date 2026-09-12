@@ -1,1 +1,1 @@
-Use sub-agents for faster delivery where necessary.
+For deep context on feature requirements, read docs/REQUIREMENTS.md.

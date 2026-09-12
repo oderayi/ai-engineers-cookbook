@@ -44,6 +44,7 @@ Then we build the backend.
 - Users can add their own recipes and save them for later use.
 - Test-driven-development is CRUCIAL. Generated codes in large amount are hard to review.
 - Parallelize heavily - use multiple agents where tasks can be safely paralellized.
+- Agent: Use sub-agents for faster delivery where necessary.
 
 ## Questions I have
 - Should I build this with Rust or Next.js/Python?
