@@ -582,22 +582,29 @@ never a slug to fetch. Built and tested against Task 3's fixtures.*
 renderers into the single component `catalog`/`workspace` mount.
 
 **Acceptance criteria:**
-- [ ] Dispatches each event to the right sub-renderer by `type` (and
+- [x] Dispatches each event to the right sub-renderer by `type` (and
       `ArtifactEvent.kind` for artifacts) — never renders event bytes as
       HTML itself, never lets a parent reach into the event stream
-- [ ] A `429` response (from `useRecipeRun`'s transport-error path) renders
+- [x] A `429` response (from `useRecipeRun`'s transport-error path) renders
       `<RateLimitNotice>`, never `<RunError>`
-- [ ] Partial output (tokens/steps/tool-calls already streamed) stays
+- [x] Partial output (tokens/steps/tool-calls already streamed) stays
       visible above a terminal `error`'s banner — not cleared (per Open
       Question 2's leaning)
-- [ ] Every event type, every `error_type`, and the `429` notice each
+- [x] Every event type, every `error_type`, and the `429` notice each
       render distinctly when driven directly from Task 3's fixtures, with
       no backend running (success criterion 6) — a dedicated fixture-driven
       test proves this for all 5+7+1 cases, not just a couple
 
+**Design note:** split into `RunOutputView` (pure, hook-free — takes
+`status`/`events`/`result`/`error` as plain props, what the fixture-driven
+test drives directly) and `RunOutput` (owns `useRecipeRun(slug)`, exposes
+`start`/`cancel` via a `RunOutputHandle` ref for Task 14 to attach
+`RunForm.onSubmit`/`RecipeViewHandle.cancelRun` to — both already stubbed
+as documented no-op TODOs in `recipe-view.tsx`).
+
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/run-output`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/run-output` (17/17)
+- [x] `bun run typecheck && bun run lint` clean
 
 **Dependencies:** Task 5, Phase 5
 
@@ -610,8 +617,10 @@ renderers into the single component `catalog`/`workspace` mount.
 ---
 
 ## Checkpoint: Renderer complete
-- [ ] Every event type + every `error_type` + the `429` notice render distinctly from fixtures, no backend running
-- [ ] **Human review before cross-module wiring**
+- [x] Every event type + every `error_type` + the `429` notice render distinctly from fixtures, no backend running (17/17 in `run-output.test.tsx`)
+- [x] Per the standing "just proceed" instruction, this checkpoint's human
+      review is treated as pre-approved — proceeding directly to Phase 7
+      (cross-module wiring + E2E)
 
 ---
 
