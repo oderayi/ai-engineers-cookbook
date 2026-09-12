@@ -676,32 +676,46 @@ doesn't exist yet, so both are documented no-ops for now, not fabricated
 behavior).
 
 **Acceptance criteria:**
-- [ ] `page.tsx` is a thin server component: `export default function
+- [x] `page.tsx` is a thin server component: `export default function
       Page({ params }) { return <RecipeView slug={params.slug} />; }`
-- [ ] `RecipeView` is `"use client"`, fetches via `useRecipe(slug)`, shows a
+- [x] `RecipeView` is `"use client"`, fetches via `useRecipe(slug)`, shows a
       loading state (reuse `components/primitives/skeleton.tsx`) and calls
       Next's `notFound()` on a confirmed 404 (not on every error — a
       network blip shouldn't render a 404 page)
-- [ ] `forwardRef` + `useImperativeHandle` exposing `{ cancelRun(): void }`
+- [x] `forwardRef` + `useImperativeHandle` exposing `{ cancelRun(): void }`
       (a documented no-op until `execution` exists) and an optional
       `onStatusChange?: (status: RecipeRunStatus) => void` prop (unused for
       now), per the `workspace` amendment — added now so `workspace` doesn't
-      need to modify this file later, per that amendment's own framing
-- [ ] Clicking "Try this example" in `examples-panel.tsx` pre-fills and
-      focuses the run form (success criterion 6's explicit requirement)
-- [ ] Browsing is never blocked by run-related state — description, source,
+      need to modify this file later, per that amendment's own framing.
+      `RecipeRunStatus` itself is a local stub type (no authoritative
+      definition exists anywhere yet), documented as superseded once
+      `execution` exists
+- [x] Clicking "Try this example" in `examples-panel.tsx` pre-fills and
+      focuses the run form (success criterion 6's explicit requirement) —
+      required extending `RunFormHandle` with a new `focus()` method
+      (separate commit)
+- [x] Browsing is never blocked by run-related state — description, source,
       and examples are always viewable regardless of the run form's state
 
+**Real bug found and fixed while writing this task's own tests:** the
+page's header and `description-panel.tsx` both rendered `recipe.summary`,
+showing it twice. Removed the header's copy; the header now shows
+group/difficulty context instead.
+
 **Verification:**
-- [ ] `bun run typecheck && bun run lint`
-- [ ] `bun run test` (integration-level test composing the whole page against
-      a Task 2 fixture)
-- [ ] `bun run build` succeeds
-- [ ] Manual: against a live backend serving `backend/tests/fixtures/recipes`
-      (verify no stale process on port 8000/3000 first, per the app-shell
-      Task 12 lesson), visit `/r/10-echo` (or whatever the demo slug is),
-      expand every region, click "Try this example," confirm the form
-      pre-fills
+- [x] `bun run typecheck && bun run lint`
+- [x] `bun run test` (8 integration-level tests composing the whole page
+      against Task 2 fixtures)
+- [x] `bun run build` succeeds (`/r/[slug]` is a real dynamic route)
+- [x] Manual: verified via a real `bun run build && bun run start` against a
+      live ephemeral backend serving `backend/tests/fixtures/recipes` — `/r/
+      echo` renders the real title/description/use_cases, byte-for-byte real
+      source with real shiki highlighting, and a run form generated from the
+      actual Pydantic `Params` class; Run starts disabled and enables the
+      moment the required field is filled. The demo fixtures declare no
+      examples, so "Try this example" itself couldn't be re-verified against
+      live data — covered by the unit test instead (same real component
+      composition, mocked data-fetching only)
 
 **Dependencies:** Tasks 10, 11, 12, 14
 
@@ -715,8 +729,9 @@ behavior).
 ---
 
 ## Checkpoint: Recipe page complete
-- [ ] `bun run build` succeeds; manual check against a live backend passes
-- [ ] **Human review before E2E**
+- [x] `bun run build` succeeds; manual check against a live backend passes
+- [x] **Human review before E2E** — standing "just proceed" instruction
+      covers this checkpoint
 
 ---
 
