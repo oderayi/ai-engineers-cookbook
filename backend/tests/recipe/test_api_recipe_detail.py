@@ -37,6 +37,13 @@ def test_detail_includes_source_files_and_env() -> None:
     assert body["env"] == []  # neither fixture declares env vars
 
 
+def test_detail_includes_group_title_and_icon() -> None:
+    resp = make_client().get("/recipes/echo")
+    body = resp.json()
+    assert body["groupTitle"] == "Demo"  # from demo/group.toml, not just the bare id
+    assert body["groupIcon"] is None  # demo/group.toml declares no icon
+
+
 def test_detail_readme_markdown_null_when_absent() -> None:
     resp = make_client().get("/recipes/echo")
     assert resp.json()["readmeMarkdown"] is None

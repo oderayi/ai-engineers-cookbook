@@ -84,9 +84,13 @@ mini-specs once this is approved).
 
 - `GET /recipes` → grouped summaries. **Served from manifests only — no recipe
   Python module is imported.** Each item: `slug, title, summary, group,
-  difficulty, order, estimatedRuntimeSeconds`.
+  groupTitle, groupIcon, difficulty, order, estimatedRuntimeSeconds`.
 - `GET /recipes/{slug}` → full detail:
   - manifest fields + `useCases`
+  - `groupTitle`, `groupIcon` — the recipe's group's own `title`/`icon` from
+    `group.toml` (`group` itself stays the bare id; a consumer wanting the
+    group's own metadata previously had to invent a second lookup —
+    exposed directly instead)
   - `readmeMarkdown` — contents of the optional `README.md`, or `null`
   - `examples` — the `[[recipe.example]]` entries (`title, summary, expect, params`)
   - `inputSchema` — the `Params` model as JSON Schema (`model_json_schema()`),
@@ -96,6 +100,17 @@ mini-specs once this is approved).
   - `env` — the `[[recipe.env]]` entries (`key, provider, required, description`)
 - `GET /recipes/{slug}/source` → the source bundle: for each file in
   `sourceFiles`, `{ path, language, text, sha256 }`, plus a `bundleSha256`.
+
+**Amendment (approved 2026-09-12, for `catalog`):** `groupTitle`/`groupIcon`
+added to both `RecipeSummary` and `RecipeDetail` — `discovery.py` already
+resolves each recipe's full `GroupManifest` to sort the list
+(`(group.order, recipe.order)`), but the wire contract only ever exposed the
+bare `group` id, leaving `catalog`'s sidebar nav tree with no group title to
+render. Also added: `CORSMiddleware` on the FastAPI app (`catalog` is the
+first module to call this API from a browser origin), allowed origins
+configurable via `SKILLET_CORS_ORIGINS` (comma-separated), defaulting to
+`http://localhost:3000`. Neither change affects any existing success
+criterion.
 
 ## Tech Stack
 

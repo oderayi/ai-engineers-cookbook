@@ -25,8 +25,32 @@ def test_list_recipes_shape_and_ordering() -> None:
     echo = body[0]
     assert echo["title"] == "Echo"
     assert echo["group"] == "demo"
+    assert echo["groupTitle"] == "Demo"  # from demo/group.toml, not just the bare id
+    assert echo["groupIcon"] is None  # demo/group.toml declares no icon
     assert echo["difficulty"] == "basic"
     assert echo["estimatedRuntimeSeconds"] == 1  # camelCase on the wire
+
+
+def test_list_recipes_includes_group_icon_when_declared(tmp_path: Path) -> None:
+    root = tmp_path / "recipes"
+    (root / "g").mkdir(parents=True)
+    (root / "g" / "group.toml").write_text(
+        '[group]\nid = "g"\ntitle = "G"\norder = 1\nicon = "flask-conical"\n'
+    )
+    recipe_dir = root / "g" / "10-x"
+    recipe_dir.mkdir()
+    (recipe_dir / "recipe.toml").write_text(
+        '[recipe]\nslug = "x"\ntitle = "X"\nsummary = "..."\ndifficulty = "basic"\n'
+        "order = 10\nestimated_runtime_seconds = 1\n"
+    )
+    (recipe_dir / "recipe.py").write_text(
+        "from skillet.recipe import Params as BaseParams\n\n"
+        "class Params(BaseParams):\n    pass\n\n"
+        "async def run(params, ctx):\n    await ctx.emit.result({})\n"
+    )
+
+    resp = TestClient(create_app(recipes_root=root)).get("/recipes")
+    assert resp.json()[0]["groupIcon"] == "flask-conical"
 
 
 def test_list_recipes_never_imports_recipe_python(monkeypatch) -> None:

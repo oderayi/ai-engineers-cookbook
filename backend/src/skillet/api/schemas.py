@@ -20,6 +20,8 @@ class RecipeSummary(CamelModel):
     title: str
     summary: str
     group: str
+    group_title: str
+    group_icon: str | None
     difficulty: str
     order: int
     estimated_runtime_seconds: int
@@ -49,6 +51,8 @@ class RecipeDetail(CamelModel):
     title: str
     summary: str
     group: str
+    group_title: str
+    group_icon: str | None
     difficulty: str
     order: int
     estimated_runtime_seconds: int

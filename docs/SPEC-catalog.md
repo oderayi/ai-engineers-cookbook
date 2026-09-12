@@ -76,6 +76,21 @@ and tokens (`app-shell`).
 `catalog` nor `settings` redefines it. Does not change `recipe-framework`'s
 existing success criteria.
 
+## Cross-module contract (`recipe-framework` amendment — approved 2026-09-12)
+
+`RecipeSummary` and `RecipeDetail` both gain `groupTitle: string` and
+`groupIcon: string | null` — this module's own sidebar nav tree and catalog
+index need a group's display title (and optional icon) to render, and the
+API previously only exposed the bare `group` id string. `group` order is
+unaffected (already implicit in the list's sort order). The API also gains
+CORS support (`SKILLET_CORS_ORIGINS` env var, default
+`http://localhost:3000`) — this module is the first to call the API from a
+browser origin. Neither change affects `recipe-framework`'s existing success
+criteria; the Code Style `RecipeDetail` sample below is updated to include
+both new fields (and `examples`, missing from the original sample —
+corrected here, not a scope change: the backend has always returned it, per
+the amendment above).
+
 ## Cross-module contract (`workspace` amendment — approved 2026-09-11)
 
 Additive only; does not change this module's existing success criteria or any
@@ -164,17 +179,27 @@ export const EnvVar = z.object({
   description: z.string(),
 });
 
+export const Example = z.object({
+  title: z.string(),
+  summary: z.string(),
+  expect: z.string(),
+  params: z.record(z.string(), z.unknown()),
+});
+
 export const RecipeDetail = z.object({
   slug: z.string(),
   title: z.string(),
   summary: z.string(),
   group: z.string(),
+  groupTitle: z.string(),
+  groupIcon: z.string().nullable(),
   difficulty: z.enum(["basic", "intermediate", "advanced"]),
   order: z.number(),
   estimatedRuntimeSeconds: z.number(),
   useCases: z.array(z.string()),
   readmeMarkdown: z.string().nullable(),
-  inputSchema: z.record(z.unknown()),          // JSON Schema of Params
+  examples: z.array(Example),
+  inputSchema: z.record(z.string(), z.unknown()), // JSON Schema of Params
   sourceFiles: z.array(z.object({ path: z.string(), language: z.string() })),
   env: z.array(EnvVar),
 });
