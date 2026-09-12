@@ -132,21 +132,24 @@ parsing the response through Task 1's zod schemas (never trusting raw
 react-query wrappers.
 
 **Acceptance criteria:**
-- [ ] Every function throws a clear, typed error (not a raw zod error) on a
+- [x] Every function throws a clear, typed error (not a raw zod error) on a
       malformed response, a non-2xx status, or a network failure — callers
       (react-query) get a catchable error, not a crash
-- [ ] `getRecipe`/`getSource` on a 404 surface a distinguishable
+- [x] `getRecipe`/`getSource` on a 404 surface a distinguishable
       "not found" case (so `app/r/[slug]/page.tsx` can call Next's
-      `notFound()`)
-- [ ] react-query hooks use sane `staleTime` (this data doesn't change
-      during a session) and a stable `queryKey` shape
-- [ ] Fetch calls are mocked in tests (no real network) — `vi.fn()`/`msw`,
-      your call — asserting the right URL, method, and parse-then-throw
-      behavior on bad data
+      `notFound()`) — a single `RecipeApiError` class with a `status`
+      property (`0` for network failure, else the real HTTP status);
+      `error.status === 404` is the distinguishing check
+- [x] react-query hooks use sane `staleTime` (this data doesn't change
+      during a session) and a stable `queryKey` shape — `staleTime: Infinity`
+      (static reference data, no mutation endpoint exists)
+- [x] Fetch calls are mocked in tests (no real network) — asserting the right
+      URL, method, and parse-then-throw behavior on bad data
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test api/recipes`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test api/recipes` (13/13) +
+      `hooks/use-recipes` (9/9)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 1
 
@@ -170,20 +173,27 @@ exactly `app-shell`'s existing `NavModel`/`NavGroup`/`NavRecipe` shape
 redefine them).
 
 **Acceptance criteria:**
-- [ ] Groups appear in the order their recipes first appear in the input
+- [x] Groups appear in the order their recipes first appear in the input
       list (no re-sorting — the backend already sorted it)
-- [ ] Each `NavGroup.title`/`.icon` comes from the first recipe's
+- [x] Each `NavGroup.title`/`.icon` comes from the first recipe's
       `groupTitle`/`groupIcon` seen for that group id
-- [ ] An unrecognized/missing icon degrades to `icon: undefined`, not a
-      placeholder string (matches `NavGroup.icon`'s existing "absent renders
-      no icon slot" contract)
-- [ ] `NavRecipe.progress` is always `undefined` here — `catalog` never
-      knows about progress; that's `workspace`'s prop to add later
-- [ ] An empty `recipes` array produces `{ groups: [] }`, not an error
+- [x] An unrecognized/missing icon **omits the `icon` key entirely** (not
+      `icon: undefined`) — matches `NavGroup.icon`'s existing "absent
+      renders no icon slot" contract; deviation from this task's literal
+      "degrades to `icon: undefined`" wording, documented as a deliberate
+      choice for `"icon" in group`-style consumers
+- [x] `NavRecipe.progress` is never present on any output `NavRecipe` (key
+      omitted, same reasoning as `icon`) — `catalog` never knows about
+      progress; that's `workspace`'s prop to add later
+- [x] An empty `recipes` array produces `{ groups: [] }`, not an error
+- [x] Same-`group`-id recipes always merge into one `NavGroup` even if
+      (hypothetically) non-contiguous in the input — a defensive `Map`-keyed
+      implementation chosen over trusting the backend's sort contract, at no
+      extra cost
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/nav-model`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/nav-model` (8/8)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 1
 
@@ -203,22 +213,34 @@ Schema to an ordered `FieldDescriptor[]` plus a `zod` validator, exactly per
 the spec's Code Style sample.
 
 **Acceptance criteria:**
-- [ ] Table-driven tests built against **real** `model_json_schema()` output
-      from small Pydantic models defined in the test file itself (string,
-      constrained int via `Field(ge=..., le=...)`, `Literal`/enum, bool,
-      `Optional[str] = None`, `list[UploadedFile]` with `json_schema_extra`
-      accept/maxFiles hints), not hand-written JSON guesses at the shape —
-      Pydantic's `anyOf`-for-`Optional` pattern and `$defs`/`$ref` for
-      nested/enum types are real shapes this must handle correctly
-- [ ] Field order matches the schema's declared property order
-- [ ] The generated zod validator accepts every valid case and rejects
-      every invalid case in the table with a field-level error message
-- [ ] An empty/no-properties schema compiles to `{ fields: [], validator }`
+- [x] Table-driven tests built against **real** `model_json_schema()` output
+      (13 distinct schemas generated via `uv run python` against the
+      backend's actual `Params`/`UploadedFile`, never hand-typed) — string,
+      constrained int, `Literal`/enum, bool, `Optional[str] = None`,
+      `list[UploadedFile]` with accept/max_files, plus a plain `list[str]`
+      added in a follow-up fix (see below)
+- [x] Field order matches the schema's declared property order
+- [x] The generated zod validator accepts every valid case and rejects
+      every invalid case in the table
+- [x] An empty/no-properties schema compiles to `{ fields: [], validator }`
       where the validator accepts `{}`
 
+**Real findings that shaped the implementation** (see `schema-form.ts`'s
+header comment for the full writeup): an `Optional[X]` field with NO
+explicit `= None` default is still `anyOf`-wrapped but ALSO lands in the
+schema's top-level `required` array (Pydantic v2 doesn't implicitly default
+an `Optional`) — "unwrap `anyOf` → not required" has to win over the
+`required` array, not just skip it as redundant; `json_schema_extra`'s
+`accept`/`max_files` keys land flat and snake_case on the property, never
+camelCased. A follow-up fix (done directly after this task's own report
+flagged the gap) added `list[str]` → `"textarea"` (one item per line,
+reusing an already-unreachable control rather than inventing a new one) —
+this codebase's own `embeddings-101` fixture has exactly this field shape
+and would otherwise have silently gotten a wrong `"text"` mapping.
+
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/schema-form`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test catalog/schema-form` (30/30)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None (pure JSON Schema → zod; no catalog-specific types needed)
 
@@ -231,9 +253,10 @@ the spec's Code Style sample.
 ---
 
 ## Checkpoint: Parallel batch 1 merged (after Tasks 3-5)
-- [ ] Each track's own tests pass in isolation
-- [ ] No file conflicts (disjoint file sets)
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged tree
+- [x] Each track's own tests pass in isolation
+- [x] No file conflicts (disjoint file sets)
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged
+      tree (34 files, 270/270 tests)
 - [ ] **Human review before wiring real nav data into the shell**
 
 ---
