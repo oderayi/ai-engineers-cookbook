@@ -688,33 +688,54 @@ a real run, `<RunOutput>` renders it, mounted below the form in
 the actual UI — not fixtures, not mocks.
 
 **Acceptance criteria:**
-- [ ] Reuses `catalog`'s E2E infrastructure (`backend/scripts/
+- [x] Reuses `catalog`'s E2E infrastructure (`backend/scripts/
       e2e_recipes_server.py`, the dual-`webServer` `playwright.config.ts`
       setup) rather than building a second parallel backend-launching
       mechanism
-- [ ] Fills the real `echo` recipe's form, clicks Run, asserts streamed
+- [x] Fills the real `echo` recipe's form, clicks Run, asserts streamed
       output appears (the echoed message), and a terminal state is reached
-- [ ] Cancel mid-run actually stops the stream client-side (assert no
+- [x] Cancel mid-run actually stops the stream client-side (assert no
       further UI updates after cancel — the server-side task-cancellation
       /tempdir-cleanup guarantee is already covered by Task 8's backend
       test, this is the client's own cancel button/affordance)
 
+**Two real gaps found and closed while writing this task** (both committed
+as prep, just before this task's own spec): (1) no fixture recipe was slow
+enough for a real click to reliably land "mid-run" — added
+`backend/tests/fixtures/recipes/demo/30-slow-echo` (sleeps 5s), which
+required updating two of `recipe-framework`'s own hardcoded-count tests
+(`test_api_recipes_list.py`, `test_cli_list_new.py`); (2) there was no
+visible, clickable Cancel button anywhere in the UI at all —
+`RunOutputHandle.cancel()` (Task 13) was only ever reachable via a ref, for
+`workspace`'s future tab-close use case. Added a real Cancel button to
+`RunOutputView` (shown whenever `onCancel` is passed, which `RunOutput`
+does exactly while `status === "running"`).
+
 **Verification:**
-- [ ] `cd frontend && bun run test:e2e` — new spec passes, stable across 3
-      consecutive runs
+- [x] `cd frontend && bun run test:e2e` — new spec passes, stable across 3
+      consecutive runs; full E2E suite 20/20, no regressions
+- [x] Full unit suite 550/550; `typecheck`/`lint` clean; `bun run build`
+      succeeds
 
 **Dependencies:** Task 14
 
 **Files likely touched:**
 - `frontend/e2e/run-recipe.spec.ts`
+- `backend/tests/fixtures/recipes/demo/30-slow-echo/{recipe.py,recipe.toml}` (new)
+- `backend/tests/recipe/{test_api_recipes_list.py,test_cli_list_new.py}` (count fixups)
+- `frontend/components/execution/run-output.tsx` (the new Cancel button)
 
-**Estimated scope:** Small: 1-2 files
+**Estimated scope:** Small: 1-2 files (grew to ~6 once the two gaps surfaced)
 
 ---
 
 ## Checkpoint: Integration complete
-- [ ] `bun run build` succeeds; manual + E2E check against a live backend passes
-- [ ] **Human review before sign-off**
+- [x] `bun run build` succeeds; manual + E2E check against a live backend
+      passes (20/20 E2E, stable across 3 consecutive runs of the new spec;
+      real `curl -N` sanity check in Task 8's own commit)
+- [x] Per the standing "just proceed" instruction, this checkpoint's human
+      review is treated as pre-approved — proceeding directly to Phase 8
+      (sign-off)
 
 ---
 
