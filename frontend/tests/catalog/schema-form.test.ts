@@ -165,6 +165,24 @@ const requiredOptionalNoDefault: JsonSchema = {
   type: "object",
 };
 
+/**
+ * `list[str]` (plain, non-file) — real generated shape confirmed while
+ * closing a gap flagged after Task 5's own report: this codebase's
+ * `embeddings-101` catalog fixture (`tests/fixtures/catalog/recipes.ts`)
+ * has a `texts: list[str]` field with no mapping rule originally given.
+ * Repurposes `"textarea"` (one item per line), the only control in the
+ * union that fits, rather than inventing a new one.
+ */
+const plainStringList: JsonSchema = {
+  additionalProperties: false,
+  properties: {
+    texts: { items: { type: "string" }, title: "Texts", type: "array" },
+  },
+  required: ["texts"],
+  title: "P13",
+  type: "object",
+};
+
 const emptySchema: JsonSchema = {
   additionalProperties: false,
   properties: {},
@@ -276,6 +294,11 @@ describe("compileForm — field mapping (table-driven, real Pydantic schemas)", 
       name: "Optional[str] with NO default, present in top-level required -> still required: false",
       schema: requiredOptionalNoDefault,
       expected: [{ name: "note", label: "Note", control: "text", required: false }],
+    },
+    {
+      name: "list[str] (plain, non-file) -> textarea, one item per line",
+      schema: plainStringList,
+      expected: [{ name: "texts", label: "Texts", control: "textarea", required: true }],
     },
     {
       name: "empty schema -> no fields",
@@ -414,6 +437,15 @@ describe("compileForm — validator", () => {
     expect(validator.safeParse({ documents: [] }).success).toBe(false);
     expect(validator.safeParse({ documents: [file, file, file, file] }).success).toBe(false);
     expect(validator.safeParse({ documents: ["not-a-file"] }).success).toBe(false);
+  });
+
+  it("validates a list[str] (textarea) field as an array of strings, not a plain string", () => {
+    const { validator } = compileForm(plainStringList);
+
+    expect(validator.safeParse({ texts: ["a", "b"] }).success).toBe(true);
+    expect(validator.safeParse({ texts: [] }).success).toBe(true); // required means present, not non-empty
+    expect(validator.safeParse({ texts: "a single string" }).success).toBe(false);
+    expect(validator.safeParse({}).success).toBe(false); // required field, must be present
   });
 
   it("validates the full combined schema end to end for a realistic valid submission", () => {

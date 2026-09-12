@@ -137,9 +137,28 @@ function isUploadedFileArray(schema: JsonSchemaProperty): boolean {
   return schema.type === "array" && schema.items?.type === "string" && schema.items.format === "binary";
 }
 
+/**
+ * `list[str]` (plain, non-file) — `{"type": "array", "items": {"type":
+ * "string"}}` — real, generated output confirmed this shape (no `format`,
+ * no `json_schema_extra`). There's no dedicated "list of strings" control in
+ * `FieldDescriptor`'s union and no reason to invent one for a single field
+ * shape; `"textarea"` (already a real member of the union, previously
+ * unreachable — see file header finding #5) is repurposed for it, one item
+ * per line. `buildFieldValidator` special-cases this back to `z.array
+ * (z.string())` rather than the plain-string `z.string()` a bare `textarea`
+ * would otherwise get, by checking `schema.type` itself rather than trusting
+ * `field.control` alone.
+ */
+function isStringArray(schema: JsonSchemaProperty): boolean {
+  return schema.type === "array" && schema.items?.type === "string" && schema.items.format !== "binary";
+}
+
 function resolveControl(schema: JsonSchemaProperty): FieldDescriptor["control"] {
   if (isUploadedFileArray(schema)) {
     return "files";
+  }
+  if (isStringArray(schema)) {
+    return "textarea";
   }
   if (schema.type === "boolean") {
     return "switch";
@@ -213,8 +232,15 @@ function buildFieldValidator(field: FieldDescriptor, schema: JsonSchemaProperty)
 
   switch (field.control) {
     case "text":
-    case "textarea":
       base = z.string();
+      break;
+    case "textarea":
+      // A bare string field can also resolve to "textarea" in principle
+      // (see file header finding #5 — currently unreachable from a real
+      // schema), so this still has to fall back to `z.string()` when the
+      // underlying shape isn't the `list[str]` case `isStringArray` maps
+      // here from.
+      base = schema.type === "array" ? z.array(z.string()) : z.string();
       break;
     case "select": {
       const options = field.options ?? [];
