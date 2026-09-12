@@ -303,12 +303,12 @@ second hook call for what's expected to be the common case.
 "keys stay in your browser" messaging block used on both settings surfaces.
 
 **Acceptance criteria:**
-- [ ] `provider-key-field.tsx`: renders `type="password"` by default; a
+- [x] `provider-key-field.tsx`: renders `type="password"` by default; a
       show/hide toggle (`Eye`/`EyeOff` from `lucide-react`) flips to
       `type="text"` and back; toggling one field's visibility never affects
       another field's; the raw value is never logged or otherwise emitted
       outside the input's own value
-- [ ] `keys-safety-note.tsx`: a shadcn `Alert`-based block with the "your keys
+- [x] `keys-safety-note.tsx`: a shadcn `Alert`-based block with the "your keys
       stay in this browser, sent only when you run a recipe" message
 
 **Verification:**
@@ -332,9 +332,9 @@ second hook call for what's expected to be the common case.
 the same rule as the Zod schema (absolute http(s) URL or empty).
 
 **Acceptance criteria:**
-- [ ] Shows a validation message for a non-empty, non-http(s) value
-- [ ] Accepts an empty value (falls back to the default backend, per the spec)
-- [ ] Does not itself write to `localStorage` — takes `value`/`onChange` props,
+- [x] Shows a validation message for a non-empty, non-http(s) value
+- [x] Accepts an empty value (falls back to the default backend, per the spec)
+- [x] Does not itself write to `localStorage` — takes `value`/`onChange` props,
       composed into `useSettings` by whoever mounts it (Task 11)
 
 **Verification:**
@@ -357,10 +357,10 @@ the same rule as the Zod schema (absolute http(s) URL or empty).
 before actually wiping the blob.
 
 **Acceptance criteria:**
-- [ ] Clicking the button opens a confirmation dialog; clicking "confirm"
+- [x] Clicking the button opens a confirmation dialog; clicking "confirm"
       calls the provided `onConfirm` (wired to `useSettings().clearAll` by
       whoever mounts it); clicking "cancel" or dismissing does nothing
-- [ ] Keyboard-operable (Escape closes, Enter on the trigger opens)
+- [x] Keyboard-operable (Escape closes, Enter on the trigger opens)
 
 **Verification:**
 - [ ] Tests pass: `cd frontend && bun run test clear-all-button`
@@ -378,9 +378,14 @@ before actually wiping the blob.
 ---
 
 ## Checkpoint: Parallel batch 2 merged (after Tasks 7–9)
-- [ ] Each track's own tests pass in isolation
-- [ ] No file conflicts
-- [ ] `bun run typecheck`, `bun run lint`, `bun run test` clean
+- [x] Each track's own tests pass in isolation (built by 3 parallel subagents,
+      each on a disjoint file set, per the standing "parallelize heavily"
+      instruction — pre-installed shared shadcn deps (Alert/Dialog/Input/
+      Label/Badge) myself first so no track needed to touch `components.json`
+      or risk overwriting `button.tsx`'s WCAG focus-ring fix)
+- [x] No file conflicts
+- [x] `bun run typecheck`, `bun run lint`, `bun run test` clean on the merged
+      tree (25 files, 168/168 tests)
 
 ---
 
