@@ -151,13 +151,13 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Provider → author trial-key env-var resolution.
 
 **Acceptance criteria:**
-- [ ] `TRIAL_KEY_ENV: dict[str, str]` — `{"openai": "SKILLET_TRIAL_OPENAI_API_KEY"}`, a one-line addition point for a second provider
-- [ ] `resolve(provider: str) -> str` — raises `TrialUnavailable` (not a bare `KeyError`) when the provider is unknown or its env var is unset/empty
-- [ ] `any_trial_key_configured() -> bool` — `True` iff at least one `TRIAL_KEY_ENV` value has a non-empty env var set
+- [x] `TRIAL_KEY_ENV: dict[str, str]` — `{"openai": "SKILLET_TRIAL_OPENAI_API_KEY"}`, a one-line addition point for a second provider
+- [x] `resolve(provider: str) -> str` — raises `TrialUnavailable` (not a bare `KeyError`) when the provider is unknown or its env var is unset/empty
+- [x] `any_trial_key_configured() -> bool` — `True` iff at least one `TRIAL_KEY_ENV` value has a non-empty env var set
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_author_key.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_author_key.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** None
 
@@ -174,15 +174,15 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Builds the two `429` bodies this module can produce, in the exact shape `execution`'s `RateLimitPayload` (frontend) / `docs/SPEC-execution.md`'s `429` contract expects.
 
 **Acceptance criteria:**
-- [ ] `trial_daily_error(retry_after_seconds: int) -> ...` → `{"error": "rate_limited", "scope": "trial_daily", "message": ..., "retry_after_seconds": ..., "cta": "add_key"}`
-- [ ] `global_budget_error(retry_after_seconds: int) -> ...` → same shape, `"scope": "global_budget"`, `"cta": "clone_local"`
-- [ ] `retry_after_seconds` for both = seconds remaining until the next UTC midnight, computed once, consistently (a small shared helper, not duplicated math)
-- [ ] The returned shape matches `frontend/lib/execution/rate-limit.ts`'s `RateLimitPayload` zod schema field-for-field — cross-checked directly against that file, not re-derived from memory of the spec text alone
-- [ ] `message` text is real, user-facing copy (not a placeholder) for each scope, matching Confirmed Decision 9's guidance
+- [x] `trial_daily_error(retry_after_seconds: int) -> ...` → `{"error": "rate_limited", "scope": "trial_daily", "message": ..., "retry_after_seconds": ..., "cta": "add_key"}`
+- [x] `global_budget_error(retry_after_seconds: int) -> ...` → same shape, `"scope": "global_budget"`, `"cta": "clone_local"`
+- [x] `retry_after_seconds` for both = seconds remaining until the next UTC midnight, computed once, consistently (a small shared helper, not duplicated math)
+- [x] The returned shape matches `frontend/lib/execution/rate-limit.ts`'s `RateLimitPayload` zod schema field-for-field — cross-checked directly against that file, not re-derived from memory of the spec text alone
+- [x] `message` text is real, user-facing copy (not a placeholder) for each scope, matching Confirmed Decision 9's guidance
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_contract.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_contract.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** None
 
@@ -199,16 +199,16 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** `gate_trial_run`, the FastAPI dependency that ties everything together, per the spec's own Code Style sample — plus wiring `app.state.trial_redis`/`app.state.cookie_secret` into `create_app()`.
 
 **Acceptance criteria:**
-- [ ] `gate_trial_run(recipe, parsed_config, request) -> TrialDecision` (`TrialDecision.config: dict[str, str]`) matching the spec's own sample function shape
-- [ ] All required keys present in `parsed_config` → pure BYOK, `TrialDecision(config=parsed_config)` unchanged, **no Redis call, no cookie check** (verified by a mock that fails the test if Redis is called)
-- [ ] `any_trial_key_configured()` is `False` → no-op, pass through unchanged (Confirmed Decision 11) — no Redis call, no cookie issued
-- [ ] Otherwise: budget check first (raise `429` global_budget if exhausted) → identity resolution → counters check (raise `429` trial_daily if either counter is over cap) → author-key injection for exactly the missing required key(s), client-supplied values untouched → `record_estimated_cost` **before** returning the grant
-- [ ] `TrialUnavailable` during injection (a provider with no configured key, even though `any_trial_key_configured()` was true for a DIFFERENT provider) → `429` global_budget, not an unhandled exception
-- [ ] `create_app()` builds `UpstashRedis` from `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` env vars (or leaves `app.state.trial_redis = None` if unset — documented as a distinct, non-silent misconfiguration path per the plan's Architecture Decision 7, not conflated with "no trial key configured") and `app.state.cookie_secret` from `SKILLET_TRIAL_COOKIE_SECRET`
+- [x] `gate_trial_run(recipe, parsed_config, request) -> TrialDecision` (`TrialDecision.config: dict[str, str]`) matching the spec's own sample function shape
+- [x] All required keys present in `parsed_config` → pure BYOK, `TrialDecision(config=parsed_config)` unchanged, **no Redis call, no cookie check** (verified by a mock that fails the test if Redis is called)
+- [x] `any_trial_key_configured()` is `False` → no-op, pass through unchanged (Confirmed Decision 11) — no Redis call, no cookie issued
+- [x] Otherwise: budget check first (raise `429` global_budget if exhausted) → identity resolution → counters check (raise `429` trial_daily if either counter is over cap) → author-key injection for exactly the missing required key(s), client-supplied values untouched → `record_estimated_cost` **before** returning the grant
+- [x] `TrialUnavailable` during injection (a provider with no configured key, even though `any_trial_key_configured()` was true for a DIFFERENT provider) → `429` global_budget, not an unhandled exception
+- [x] `create_app()` builds `UpstashRedis` from `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` env vars (or leaves `app.state.trial_redis = None` if unset — documented as a distinct, non-silent misconfiguration path per the plan's Architecture Decision 7, not conflated with "no trial key configured") and `app.state.cookie_secret` from `SKILLET_TRIAL_COOKIE_SECRET`
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_gate.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_gate.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** Tasks 3, 4, 5, 6, 7
 

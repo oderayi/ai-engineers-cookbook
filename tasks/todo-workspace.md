@@ -131,14 +131,14 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** Composes `tabs-reducer.ts` with `settings`' `useLocalStorage`, persisting only `{tabs, activeTabId}`.
 
 **Acceptance criteria:**
-- [ ] `useTabs(): [TabsState, { openTab, closeTab, activateTab }]` (or equivalent — document your exact returned action shape)
-- [ ] Dispatches `RESTORE` exactly once after the initial `localStorage` read resolves (mirrors `useLocalStorage`'s own SSR-safe hydration pattern — read that hook's real implementation before assuming how to hook into it)
-- [ ] Every subsequent `{tabs, activeTabId}` change is persisted — never run state, form values, or anything else
-- [ ] Imports `settings`' real `hooks/use-local-storage.ts` — does not fork a second copy
+- [x] `useTabs(): [TabsState, { openTab, closeTab, activateTab }]` (or equivalent — document your exact returned action shape)
+- [x] Dispatches `RESTORE` exactly once after the initial `localStorage` read resolves (mirrors `useLocalStorage`'s own SSR-safe hydration pattern — read that hook's real implementation before assuming how to hook into it)
+- [x] Every subsequent `{tabs, activeTabId}` change is persisted — never run state, form values, or anything else
+- [x] Imports `settings`' real `hooks/use-local-storage.ts` — does not fork a second copy
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test hooks/use-tabs`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test hooks/use-tabs`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 2, 3
 
@@ -155,12 +155,12 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** Composes `progress.ts` with `useLocalStorage`, exposing the progress ledger and its mutators.
 
 **Acceptance criteria:**
-- [ ] `useProgress(): [ProgressMap, { markViewed(slug), markCompleted(slug) }]`
-- [ ] Persists `progress` into the SAME `skillet.workspace` blob `use-tabs.ts` writes (one blob, two hooks reading/writing disjoint slices of it — document how write races between the two hooks are avoided, e.g. both going through one shared `useLocalStorage` instance/key with a functional updater, not two independent `localStorage.setItem` calls that could clobber each other)
+- [x] `useProgress(): [ProgressMap, { markViewed(slug), markCompleted(slug) }]`
+- [x] Persists `progress` into the SAME `skillet.workspace` blob `use-tabs.ts` writes (one blob, two hooks reading/writing disjoint slices of it — document how write races between the two hooks are avoided, e.g. both going through one shared `useLocalStorage` instance/key with a functional updater, not two independent `localStorage.setItem` calls that could clobber each other)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test hooks/use-progress`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test hooks/use-progress`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 2, 4, 5 (the shared-blob write-race concern needs `use-tabs.ts` to exist first to actually resolve, not just be designed against in the abstract)
 
