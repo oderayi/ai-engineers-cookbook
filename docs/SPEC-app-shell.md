@@ -252,7 +252,7 @@ explicit interface; Tailwind classes ordered layout → box → type → color �
 
 ## Success Criteria
 
-1. `pnpm build` produces an installable PWA: valid manifest, registered service
+1. `bun run build` produces an installable PWA: valid manifest, registered service
    worker, install prompt available (Playwright-verified).
 2. Offline: after one online visit, the nav and any previously-viewed recipe page
    are browsable with no network; the run form shows an explicit offline state.

@@ -401,24 +401,24 @@ fixes in existing Phase 1/2 files, not new ones.
 
 ## Phase 4: E2E & sign-off
 
-### Task 12: Playwright E2E — install, offline, a11y
+### Task 12: [DONE] Playwright E2E — install, offline, a11y
 
 **Description:** The three E2E specs the spec calls for. Playwright's
 chromium binary is confirmed installed in this environment (Task 0), so
 these should actually run rather than just be written and hoped for.
 
 **Acceptance criteria:**
-- [ ] `pwa-install.spec.ts`: manifest valid, service worker registers,
+- [x] `pwa-install.spec.ts`: manifest valid, service worker registers,
       `beforeinstallprompt` fires (or documents why it can't be asserted in a
       headless/sandboxed run)
-- [ ] `offline-browse.spec.ts`: load online once, go offline, navigate cached
+- [x] `offline-browse.spec.ts`: load online once, go offline, navigate cached
       nav + a previously-viewed page, confirm it works; a run-form area (once
       it exists) would show an offline state — for `app-shell` alone, assert
       the shell itself degrades gracefully offline
-- [ ] `a11y.spec.ts`: axe scan on the shell, zero serious/critical violations
+- [x] `a11y.spec.ts`: axe scan on the shell, zero serious/critical violations
 
 **Verification:**
-- [ ] `bun run test:e2e` — or an explicit note on what couldn't run and why
+- [x] `bun run test:e2e` — or an explicit note on what couldn't run and why
 
 **Dependencies:** Task 11
 
@@ -429,21 +429,21 @@ these should actually run rather than just be written and hoped for.
 
 ---
 
-### Task 13: Success-criteria sign-off pass
+### Task 13: [DONE] Success-criteria sign-off pass
 
 **Description:** Map each of `SPEC-app-shell.md`'s 7 numbered Success
 Criteria to the test(s) or manual verification that covers it, honestly
 noting any that are only manually verified (e.g. if Playwright couldn't run).
 
 **Acceptance criteria:**
-- [ ] A sign-off table (in `tasks/plan-app-shell.md`, matching
+- [x] A sign-off table (in `tasks/plan-app-shell.md`, matching
       `recipe-framework`'s precedent) lists all 7 criteria against their
       verification
-- [ ] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test` all
+- [x] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test` all
       green
 
 **Verification:**
-- [ ] Full command suite above, run once at the end
+- [x] Full command suite above, run once at the end
 
 **Dependencies:** Tasks 0–12
 
@@ -455,7 +455,10 @@ noting any that are only manually verified (e.g. if Playwright couldn't run).
 ---
 
 ## Checkpoint: Module complete (after Task 13)
-- [ ] All 7 success criteria individually verified (or honestly flagged as
-      manual-only where the sandbox couldn't run Playwright)
-- [ ] Full suite + lint + typecheck + build green
+- [x] All 7 success criteria individually verified — 6 fully, criterion 2
+      partially (runtime "/" caching is best-effort per a documented sandbox
+      limitation; the run-form offline state has no run form to test yet) —
+      see the sign-off table in tasks/plan-app-shell.md
+- [x] Full suite + lint + typecheck + build green (59 Vitest + 12 Playwright,
+      stable across repeated runs)
 - [ ] **Human review before `catalog`/`settings` begin consuming this module**

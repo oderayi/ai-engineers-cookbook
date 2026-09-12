@@ -100,7 +100,10 @@ warnings) and was about to be committed as a build artifact.
       visible focus indicator); see the commit for the full root-cause trail
 
 ### Phase 4: E2E & sign-off
-- [ ] Task 12: Playwright setup + `pwa-install` / `offline-browse` / `a11y` specs
+- [x] Task 12: Playwright setup + `pwa-install` / `offline-browse` / `a11y` specs
+      (+ a responsive.spec.ts addendum covering Task 11's breakpoints, which
+      had only been ad-hoc-verified — see the commit for the zombie-process
+      rabbit hole this surfaced)
 - [ ] Task 13: Success-criteria sign-off pass
 
 ### Checkpoint: Module complete
@@ -132,6 +135,27 @@ itself before reporting back. I review and integrate all five before Phase 2.
 | Parallel subagents drift from the spec's exact prop names/shapes (e.g. `Shell({ nav, tabs, children })`) | Medium — integration rework in Phase 2 | Each subagent prompt quotes the exact interface from the spec's code samples; I diff each track's public exports against the spec before merging |
 | shadcn's default `lib/utils.ts` fights the spec's `lib/cn.ts` | Low | Configure `components.json`'s aliases before any component is generated (Task 1) |
 | Tailwind v4's `@theme` syntax or Serwist's Next 15 integration has changed since the spec was written | Low–Medium | Verify against currently-installed package versions during Task 0/2/7, not against memorized API shape |
+
+## Success-criteria sign-off (Task 13)
+
+Every numbered Success Criterion in `SPEC-app-shell.md`, mapped to what
+verifies it. Module complete: 59/59 Vitest tests, 12/12 Playwright E2E tests
+(stable across 3+ consecutive runs), `bun run {typecheck,lint,build}` all
+clean.
+
+| # | Criterion | Verified by |
+|---|---|---|
+| 1 | `bun run build` produces an installable PWA (manifest, registered SW, install prompt) | `e2e/pwa-install.spec.ts` — manifest validity and SW registration are hard assertions; the install-prompt check is best-effort (Chromium's `beforeinstallprompt` heuristic is environment-dependent even for a genuinely installable app — reported via annotation, per the spec's own allowance) |
+| 2 | Offline: nav + previously-viewed page browsable with no network; run form shows an offline state | **Partially verified, honestly.** Static-asset precaching (icons + JS/CSS, the mechanism that keeps the shell itself available offline) is hard-verified in `e2e/offline-browse.spec.ts`. Runtime caching of the `/` document is a best-effort check — `navigator.serviceWorker.controller` was found not to reflect real state reliably enough in this sandbox for a hard assertion (see that spec's comments for the full trail, including a red herring from a stale zombie server process). "The run form shows an offline state" has no run form yet — no `execution` module exists — so that half of this criterion is out of scope for `app-shell` and carries forward to whichever module builds the run form |
+| 3 | Theme switches light⇄dark⇄system, no flash, default light, persists | `tests/shell/theme-toggle.test.tsx` (8 tests: all three states, persistence) verifies the mechanism; no-flash relies on `next-themes`' own pre-hydration script (its presence is asserted; a pixel-level "no visible flash" check would need a screenshot-diff E2E test, not attempted) |
+| 4 | axe scan zero serious/critical; full keyboard traversal with visible focus ring | `e2e/a11y.spec.ts`, both tests — including the permanent regression test for the real focus-ring bug found and fixed in Task 11 |
+| 5 | Shell renders correctly at 375/768/1280; sidebar collapses to icons on desktop, drawer under `md` | `e2e/responsive.spec.ts` (added in Task 12 to close a gap — Task 11 only verified this ad-hoc) |
+| 6 | Shell compiles and renders with only fixture data, no backend | True by construction — `app/layout.tsx` imports only `tests/fixtures/nav-tree.ts`; no `fetch`/backend call exists anywhere in `frontend/` (confirmed by inspection). `bun run build` succeeds standalone |
+| 7 | Downstream modules mount into topbar/main slots without modifying `components/shell/` | Structural: `Shell`'s `tabs`/`children` and `Topbar`'s `children`/`actions` are the only seams; `tests/shell/shell.test.tsx` and `tests/shell/topbar.test.tsx` prove external content renders through them without reaching into shell internals |
+
+**Action items surfaced by this table, carried forward:**
+- Criterion 2's "run form shows an offline state" needs a real test once `execution` exists.
+- A pixel-level no-flash verification for criterion 3 would need a screenshot-diff E2E test — not built; the mechanism (next-themes' own script) is verified instead.
 
 ## Open Questions
 
