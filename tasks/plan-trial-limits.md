@@ -127,3 +127,23 @@ Carried from the spec, not blocking for these tasks:
 - Admin override/reset for the kill-switch — out of scope for v1 per spec.
 - Timezone (UTC) — decided, not revisited here.
 - Forcibly cancelling an in-flight run when the kill-switch trips mid-stream — spec accepts "the budget is approximate and can overshoot slightly"; not attempted here.
+
+## Success-criteria sign-off (Task 11)
+
+Every numbered Success Criterion in `SPEC-trial-limits.md`, mapped to what
+verifies it. Module complete: full backend suite green (265 passed),
+`uv run ruff check .` clean, `trial_limits/` at 97% line coverage (≥ the
+90% target). No criterion needed to carry forward as a partial — `execution`
+(the one module this depends on) was already complete and its real route
+was available to wire against directly in Task 9, the same reason
+`execution`'s own sign-off had nothing to carry forward either.
+
+| # | Criterion | Verified by |
+|---|---|---|
+| 1 | A fresh browser (no cookie) can run a recipe requiring a key it hasn't set, up to `SKILLET_TRIAL_DAILY_CAP` times in a UTC day, using the author's key server-side — proven end-to-end through `execution`'s route | `test_run_endpoint_wiring.py::test_granted_keyless_trial_run_uses_the_authors_key_and_sets_a_cookie` (a real recipe echoes back exactly the author's key it received) + `::test_third_keyless_request_same_day_is_denied_with_429` (two grants at `DAILY_TRIAL_CAP=2`, sharing one cookie jar like a real browser, then a real denial) |
+| 2 | The next keyless request that day from the same identity gets exactly the `429` shape `execution` defines, with `scope: "trial_daily"`, `cta: "add_key"`, and a `retry_after_seconds` accurate to the next UTC midnight | Same test above for the shape/scope/cta; `test_contract.py`'s `seconds_until_next_utc_midnight` tests (exact boundary at midnight, one second before, at noon) for the accuracy claim independently |
+| 3 | A request whose `config` already satisfies every required env key is never denied and never touches Redis, regardless of that identity's or the global budget's state — proven by a mock that fails the test if Redis is called | `test_gate.py::test_all_required_keys_present_is_pure_byok_no_redis_no_cookie` — a `FailingRedis` double whose every method raises `AssertionError` if called at all, exercised with the daily cap and budget both left in states that would deny a keyless request |
+| 4 | Once the global daily budget is exhausted, every keyless-trial request — from any identity, including ones with zero prior runs — is denied with `scope: "global_budget"`, `cta: "clone_local"`, while BYOK requests continue to succeed | `test_gate.py::test_exhausted_global_budget_denies_with_global_budget_scope` + `test_run_endpoint_wiring.py::test_exhausted_global_budget_denies_before_any_recipe_code_runs` (a fresh identity, zero prior runs, still denied) + `::test_byok_request_bypasses_the_gate_entirely` (unaffected by the same exhausted-budget env) |
+| 5 | A sentinel value in the author's trial-key env var never appears in a response, log line, or exception across the full test suite — enforced by a CI log-grep, mirroring `execution`'s key-hygiene guarantee | `test_key_hygiene.py` (3 tests: logs + client-visible error, a `429` body, and `author_key.resolve`'s own exception) + `scripts/check_trial_key_redaction.py`, verified against a real negative control (temporarily un-wiring `install_redacting_filter()` reproduced a real leak the script caught) |
+| 6 | A cookie this module issues verifies correctly; a tampered or malformed cookie value is rejected and a fresh one is issued, never trusted as an existing identity | `test_cookie.py` (10 tests: round-trip recovery, tampered signature, missing separator, empty string, wrong secret) + `test_identity.py::test_tampered_cookie_is_treated_as_absent_and_a_fresh_one_is_issued` (the end-to-end "rejected → fresh one issued" behavior, not just `verify()` in isolation) |
+| 7 | Both the per-identity counters and the global budget counter reset automatically at the UTC day boundary with no manual intervention (proven by a time-travelled test, not just documented behavior) | `test_counters.py` and `test_budget.py`'s `time_machine.travel(...)` tests — advancing the clock past UTC midnight and asserting a fresh key starts at the base count/zero spend, regardless of the previous day's now-irrelevant key |

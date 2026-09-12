@@ -222,8 +222,8 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 ---
 
 ## Checkpoint: Gate complete (after Tasks 6-8)
-- [ ] `test_gate.py` covers BYOK bypass, partial-config injection (only missing required keys filled, client-supplied values untouched), all 4 429/grant paths, the no-trial-key no-op, and the Redis-unconfigured case
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 4
+- [x] `test_gate.py` covers BYOK bypass, partial-config injection (only missing required keys filled, client-supplied values untouched), all 4 429/grant paths, the no-trial-key no-op, and the Redis-unconfigured case
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 4
 
 ---
 
@@ -234,15 +234,15 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** The real integration point — `execution`'s route calls `gate_trial_run` after `parse_run_request`, before `run_event_stream`.
 
 **Acceptance criteria:**
-- [ ] `run_recipe` calls `gate_trial_run(recipe.manifest, parsed.config, request)` (or the closest equivalent given `parsed`'s real shape — adjust to `ParsedRunRequest`'s actual fields) between parsing and streaming, using the returned `TrialDecision.config` in place of `parsed.config` from that point on (i.e. build a new `ParsedRunRequest`-equivalent, or pass the resolved config directly into `run_event_stream` — whichever keeps `stream.py` untouched, since it already takes `parsed.config` generically)
-- [ ] A denied request's `429` is raised (and any `Set-Cookie` from a freshly-issued identity is still attached to that response) before `run_event_stream`/`execute()` ever runs
-- [ ] A granted request's response still sets `Set-Cookie` for a freshly-issued anonymous id (a BYOK request may still be a first-time visitor and should still get a cookie issued, if this module's own `Identity.from_request` is even reached for it — confirm and document whether BYOK requests reach identity resolution at all, since Confirmed Decision 2 says BYOK skips "every check in this module" including presumably the cookie; a first-time BYOK visitor may simply never get `sk_aid` until their first keyless-trial-eligible run — document this as the real, spec-consistent behavior rather than silently adding cookie issuance to the BYOK path)
-- [ ] `execution`'s own existing 167 tests all pass unmodified (no `SKILLET_TRIAL_*` env vars set in that test environment → `gate_trial_run` is a no-op for all of them)
+- [x] `run_recipe` calls `gate_trial_run(recipe.manifest, parsed.config, request)` (or the closest equivalent given `parsed`'s real shape — adjust to `ParsedRunRequest`'s actual fields) between parsing and streaming, using the returned `TrialDecision.config` in place of `parsed.config` from that point on (i.e. build a new `ParsedRunRequest`-equivalent, or pass the resolved config directly into `run_event_stream` — whichever keeps `stream.py` untouched, since it already takes `parsed.config` generically)
+- [x] A denied request's `429` is raised (and any `Set-Cookie` from a freshly-issued identity is still attached to that response) before `run_event_stream`/`execute()` ever runs
+- [x] A granted request's response still sets `Set-Cookie` for a freshly-issued anonymous id (a BYOK request may still be a first-time visitor and should still get a cookie issued, if this module's own `Identity.from_request` is even reached for it — confirm and document whether BYOK requests reach identity resolution at all, since Confirmed Decision 2 says BYOK skips "every check in this module" including presumably the cookie; a first-time BYOK visitor may simply never get `sk_aid` until their first keyless-trial-eligible run — document this as the real, spec-consistent behavior rather than silently adding cookie issuance to the BYOK path)
+- [x] `execution`'s own existing 167 tests all pass unmodified (no `SKILLET_TRIAL_*` env vars set in that test environment → `gate_trial_run` is a no-op for all of them)
 
 **Verification:**
-- [ ] `cd backend && uv run pytest` — full suite (execution's 167 + trial_limits' new tests) green
-- [ ] `uv run ruff check .`
-- [ ] Manual: a real request with `SKILLET_TRIAL_OPENAI_API_KEY` set and a recipe missing that key gets a real trial-granted run; the same identity's 3rd request that day (with `SKILLET_TRIAL_DAILY_CAP=2`) gets a real `429`
+- [x] `cd backend && uv run pytest` — full suite (execution's 167 + trial_limits' new tests) green
+- [x] `uv run ruff check .`
+- [x] Manual: a real request with `SKILLET_TRIAL_OPENAI_API_KEY` set and a recipe missing that key gets a real trial-granted run; the same identity's 3rd request that day (with `SKILLET_TRIAL_DAILY_CAP=2`) gets a real `429`
 
 **Dependencies:** Task 8
 
@@ -260,13 +260,13 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Mirrors `execution`'s own key-hygiene test and CI script, for the author's trial key.
 
 **Acceptance criteria:**
-- [ ] `test_key_hygiene.py`: a sentinel value in `SKILLET_TRIAL_OPENAI_API_KEY` never appears in a `429` body, any log line emitted during gating, or any exception raised by `author_key.resolve` — across a real granted-run request through the full endpoint (reusing `execution`'s own `RedactingFilter`/`redaction_context`, per Confirmed Decision 8 — no new redaction mechanism)
-- [ ] A CI log-grep script (`backend/scripts/check_trial_key_redaction.py` or extending `execution`'s own `check_log_redaction.py` — your call, document it) fails the build if the sentinel appears anywhere in captured output, verified against a real negative control the same way `execution`'s own script was
-- [ ] `trial_limits/` package reaches ≥ 90% line coverage
+- [x] `test_key_hygiene.py`: a sentinel value in `SKILLET_TRIAL_OPENAI_API_KEY` never appears in a `429` body, any log line emitted during gating, or any exception raised by `author_key.resolve` — across a real granted-run request through the full endpoint (reusing `execution`'s own `RedactingFilter`/`redaction_context`, per Confirmed Decision 8 — no new redaction mechanism)
+- [x] A CI log-grep script (`backend/scripts/check_trial_key_redaction.py` or extending `execution`'s own `check_log_redaction.py` — your call, document it) fails the build if the sentinel appears anywhere in captured output, verified against a real negative control the same way `execution`'s own script was
+- [x] `trial_limits/` package reaches ≥ 90% line coverage
 
 **Verification:**
-- [ ] `cd backend && uv run pytest --cov=skillet.trial_limits --cov-report=term-missing`
-- [ ] `uv run ruff check .`
+- [x] `cd backend && uv run pytest --cov=skillet.trial_limits --cov-report=term-missing`
+- [x] `uv run ruff check .`
 
 **Dependencies:** Task 9
 
@@ -279,8 +279,8 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 ---
 
 ## Checkpoint: Module complete (after Tasks 1-10)
-- [ ] Full backend suite green, ruff clean, `trial_limits/` ≥ 90% coverage
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 5
+- [x] Full backend suite green, ruff clean, `trial_limits/` ≥ 90% coverage
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 5
 
 ---
 
@@ -291,11 +291,11 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Map each of `SPEC-trial-limits.md`'s 7 numbered Success Criteria to the test(s) that verify it, matching the precedent from every prior module.
 
 **Acceptance criteria:**
-- [ ] A sign-off table (appended to `tasks/plan-trial-limits.md`) lists all 7 criteria against their verification, honestly noting any partial/carried-forward criterion
-- [ ] `cd backend && uv run pytest && uv run ruff check .` clean; `trial_limits/` ≥ 90% coverage
+- [x] A sign-off table (appended to `tasks/plan-trial-limits.md`) lists all 7 criteria against their verification, honestly noting any partial/carried-forward criterion
+- [x] `cd backend && uv run pytest && uv run ruff check .` clean; `trial_limits/` ≥ 90% coverage
 
 **Verification:**
-- [ ] Full command suite above, run once at the end
+- [x] Full command suite above, run once at the end
 
 **Dependencies:** Tasks 1-10
 
@@ -307,6 +307,6 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 ---
 
 ## Checkpoint: Module complete (after Task 11)
-- [ ] All 7 success criteria individually verified
-- [ ] Full backend suite + ruff + coverage green
-- [ ] Per the standing "just proceed" instruction, `trial-limits` is complete; `distribution` may now begin consuming it (alongside `workspace`), per the approved build order
+- [x] All 7 success criteria individually verified
+- [x] Full backend suite + ruff + coverage green
+- [x] Per the standing "just proceed" instruction, `trial-limits` is complete; `distribution` may now begin consuming it (alongside `workspace`), per the approved build order
