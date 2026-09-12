@@ -406,22 +406,34 @@ Task 4's nav model or a richer summary-based grouping — your call which of
 the two feeds this page, document it), the intro banner, and the filter,
 replacing `app-shell`'s placeholder `EmptyState` at `app/page.tsx`.
 
+**Deviation from the plan, documented at implementation time:** groups by a
+small local `groupSummaries()` (own Map-by-id, same approach as
+`nav-model.ts`) rather than `buildNavModel()` — that function's
+`NavGroup`/`NavRecipe` output drops `summary`, which an index page
+benefits from showing per card.
+
 **Acceptance criteria:**
-- [ ] Renders groups + recipes fetched via Task 3's `useRecipes()` hook
-- [ ] Typing in the filter narrows both this page's list — an empty result
-      shows the existing `EmptyState` primitive (`components/primitives/
-      empty-state.tsx`), not a blank page
-- [ ] Zero recipes (empty backend/fixtures) renders a sensible empty state,
-      not an error
-- [ ] Each recipe entry links to `/r/[slug]`
-- [ ] Difficulty badges render per recipe, matching the sidebar's own badge
-      styling (`sidebar-nav.tsx`) for visual consistency
+- [x] Renders groups + recipes fetched via Task 3's `useRecipes()` hook
+- [x] Typing in the filter narrows this page's list (title OR summary
+      substring) — filters only this page, not the sidebar's separate,
+      server-rendered nav tree, which has no live connection to this input
+- [x] Zero recipes (empty backend/fixtures) renders a sensible empty state,
+      not an error — and a *different* message than "no results for your
+      search" or "couldn't load" (a fetch error), three distinct states
+- [x] Each recipe entry links to `/r/[slug]`
+- [x] Difficulty badges render per recipe, matching the sidebar's own badge
+      shape/scale (rounded-full, text-[10px] uppercase tracking-wide),
+      using main-content tokens instead of the sidebar's own `sidebar-*`
+      tokens since this renders outside that color context
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test catalog/catalog-index`
-- [ ] `bun run typecheck && bun run lint`
-- [ ] Manual: `bun run dev`, `/` shows the demo fixture recipes grouped and
-      filterable
+- [x] Tests pass: `cd frontend && bun run test catalog/catalog-index` (9/9)
+- [x] `bun run typecheck && bun run lint`
+- [x] `bun run test:e2e` (12/12, stable across 2 runs — including the a11y
+      zero-violations check against the new empty-state markup)
+- [x] Manual: verified via `bun run build && bun run start` against a live
+      ephemeral backend (real demo recipes render grouped/summarized;
+      filter narrows the list live in a real browser via Playwright)
 
 **Dependencies:** Tasks 4, 7, 8
 
@@ -435,7 +447,7 @@ replacing `app-shell`'s placeholder `EmptyState` at `app/page.tsx`.
 ---
 
 ## Checkpoint: Index complete
-- [ ] `bun run test`, `typecheck`, `lint` clean
+- [x] `bun run test`, `typecheck`, `lint` clean (37 files, 292/292 tests)
 - [ ] **Human review before the recipe-page-regions parallel batch**
 
 ---
