@@ -13,24 +13,25 @@ backend's exact wire format (snake_case, plain Pydantic serialization — NOT
 `CamelModel`, unlike every other model in this codebase).
 
 **Acceptance criteria:**
-- [ ] `StepEvent`, `TokenEvent`, `ToolCallEvent`, `LogEvent`, `ArtifactEvent`,
+- [x] `StepEvent`, `TokenEvent`, `ToolCallEvent`, `LogEvent`, `ArtifactEvent`,
       `ResultEvent`, `ErrorEvent` zod schemas, field-for-field matching
       `backend/src/skillet/recipe/events.py`'s real `model_dump_json()`
-      output (generate it yourself via `uv run python -c "..."` — do not
-      guess field names/casing)
-- [ ] A discriminated union (`z.discriminatedUnion("type", [...])`) keyed on
+      output (generated via `uv run python -c "..."`, confirmed snake_case
+      with no camelCase conversion, unlike every other model this frontend
+      consumes)
+- [x] A discriminated union (`z.discriminatedUnion("type", [...])`) keyed on
       `type`, matching the backend's own `Field(discriminator="type")`
-- [ ] `error_type` is a literal union of exactly the 5 real values
+- [x] `error_type` is a literal union of exactly the 5 real values
       (`timeout`, `output_limit`, `recipe_error`, `bad_input`,
       `upstream_error`); `ArtifactEvent.kind` is `json | table | markdown |
       file`
-- [ ] Optional/nullable fields (`detail`, `url`) accept `null` (the real
+- [x] Optional/nullable fields (`detail`, `url`) accept `null` (the real
       wire value for an absent optional field, confirmed via real
       serialization — not `undefined`)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/events`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/events` (24/24)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -49,23 +50,22 @@ over a `fetch`-based `ReadableStream` reader (not `EventSource`, which
 can't POST — per Confirmed Decision 1).
 
 **Acceptance criteria:**
-- [ ] Given a `ReadableStream<Uint8Array>` (or an async iterable of chunks,
-      your call on the exact input type — document it), yields each SSE
-      `data:` line's payload as it arrives, handling a `data:` field split
-      across multiple chunks (a real possibility with streaming — a chunk
-      boundary doesn't necessarily land on a line boundary)
-- [ ] Handles multiple `data:` lines before a blank-line terminator by
-      joining them per the SSE spec (`\n`-joined) — even though this
-      module's own events are always single-line JSON, the parser itself
-      should follow the real SSE framing rules, not assume single-line
-- [ ] Ignores comment lines (`:`-prefixed) and other SSE fields (`event:`,
-      `id:`, `retry:`) this module doesn't use, rather than choking on them
-- [ ] Stops cleanly when the stream ends (server closes) or the caller's
-      `AbortSignal` fires
+- [x] Given a `ReadableStream<Uint8Array>` (chosen so `run-client.ts` can
+      hand it `Response.body` with no adapter), yields each SSE `data:`
+      line's payload as it arrives, handling a `data:` field split across
+      multiple chunks — including a UTF-8 multi-byte codepoint split
+      mid-sequence
+- [x] Handles multiple `data:` lines before a blank-line terminator by
+      joining them per the SSE spec (`\n`-joined)
+- [x] Ignores comment lines (`:`-prefixed) and other SSE fields (`event:`,
+      `id:`, `retry:`)
+- [x] Stops cleanly when the stream ends or the caller's `AbortSignal`
+      fires — a pending `reader.read()` is raced against the abort event
+      rather than waited out, and the reader is cancelled in a `finally`
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/sse`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/sse` (21/21)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -78,7 +78,8 @@ can't POST — per Confirmed Decision 1).
 ---
 
 ## Checkpoint: Foundation (after Tasks 1-2)
-- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test` clean
+- [x] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`,
+      `test` clean (51 files, 418/418)
 - [ ] **Human review before the client/fixtures batch**
 
 ---
