@@ -1,0 +1,630 @@
+# Tasks: `execution`
+
+Plan: [tasks/plan-execution.md](plan-execution.md). Spec: [docs/SPEC-execution.md](../docs/SPEC-execution.md).
+
+---
+
+## Phase 1: Foundation — parallel batch (frontend wire contract)
+
+### Task 1 [PARALLEL — Track A]: `lib/execution/events.ts`
+
+**Description:** The zod schema for the 7 recipe events, mirroring the
+backend's exact wire format (snake_case, plain Pydantic serialization — NOT
+`CamelModel`, unlike every other model in this codebase).
+
+**Acceptance criteria:**
+- [ ] `StepEvent`, `TokenEvent`, `ToolCallEvent`, `LogEvent`, `ArtifactEvent`,
+      `ResultEvent`, `ErrorEvent` zod schemas, field-for-field matching
+      `backend/src/skillet/recipe/events.py`'s real `model_dump_json()`
+      output (generate it yourself via `uv run python -c "..."` — do not
+      guess field names/casing)
+- [ ] A discriminated union (`z.discriminatedUnion("type", [...])`) keyed on
+      `type`, matching the backend's own `Field(discriminator="type")`
+- [ ] `error_type` is a literal union of exactly the 5 real values
+      (`timeout`, `output_limit`, `recipe_error`, `bad_input`,
+      `upstream_error`); `ArtifactEvent.kind` is `json | table | markdown |
+      file`
+- [ ] Optional/nullable fields (`detail`, `url`) accept `null` (the real
+      wire value for an absent optional field, confirmed via real
+      serialization — not `undefined`)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/events`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `frontend/lib/execution/events.ts`
+- `frontend/tests/execution/events.test.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 2 [PARALLEL — Track B]: `lib/execution/sse.ts`
+
+**Description:** A streaming line parser for `text/event-stream` framing
+over a `fetch`-based `ReadableStream` reader (not `EventSource`, which
+can't POST — per Confirmed Decision 1).
+
+**Acceptance criteria:**
+- [ ] Given a `ReadableStream<Uint8Array>` (or an async iterable of chunks,
+      your call on the exact input type — document it), yields each SSE
+      `data:` line's payload as it arrives, handling a `data:` field split
+      across multiple chunks (a real possibility with streaming — a chunk
+      boundary doesn't necessarily land on a line boundary)
+- [ ] Handles multiple `data:` lines before a blank-line terminator by
+      joining them per the SSE spec (`\n`-joined) — even though this
+      module's own events are always single-line JSON, the parser itself
+      should follow the real SSE framing rules, not assume single-line
+- [ ] Ignores comment lines (`:`-prefixed) and other SSE fields (`event:`,
+      `id:`, `retry:`) this module doesn't use, rather than choking on them
+- [ ] Stops cleanly when the stream ends (server closes) or the caller's
+      `AbortSignal` fires
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/sse`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `frontend/lib/execution/sse.ts`
+- `frontend/tests/execution/sse.test.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Foundation (after Tasks 1-2)
+- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test` clean
+- [ ] **Human review before the client/fixtures batch**
+
+---
+
+## Phase 2: Client + fixtures — parallel batch
+
+### Task 3 [PARALLEL — Track A]: recorded-event fixtures
+
+**Description:** `.jsonl` fixtures (one real event per line, each schema-valid
+per Task 1) covering every scenario the renderer needs to prove itself
+against with no backend running.
+
+**Acceptance criteria:**
+- [ ] At least: a happy-path run (`step` start → `token`* → `step` finish →
+      `result`), a token-heavy stream, a run with `tool_call` events, one
+      fixture per `error_type` (5 total), and a `429` rate-limit payload
+      (the JSON shape from `SPEC-execution.md`'s own `429` contract section
+      — not an SSE event, a plain rejected-response body)
+- [ ] Every event line parses via Task 1's zod schema with no errors (a
+      test enforces this)
+- [ ] At least one fixture exercises a partial-output-then-error scenario
+      (tokens stream, then an `error` — no `result`) for the "keep partial
+      output visible" behavior `run-output.tsx` (Task 13) needs to prove
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/fixtures`
+- [ ] `bun run typecheck`
+
+**Dependencies:** Task 1
+
+**Files likely touched:**
+- `frontend/tests/execution/fixtures/*.jsonl`
+- `frontend/tests/execution/fixtures/index.test.ts` (schema-validity guard)
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 4 [PARALLEL — Track B]: `lib/execution/run-client.ts`
+
+**Description:** `postRun(backend, slug, payload, signal): AsyncIterable<RecipeEvent>`
+— composes Tasks 1 (event parsing) + 2 (SSE line parsing), builds the
+`multipart/form-data` request.
+
+**Acceptance criteria:**
+- [ ] Builds a `FormData` body: `params` (JSON string field), `config`
+      (JSON string field — the already-resolved map from `settings`, sent
+      verbatim, never recomputed client-side per Confirmed Decision 2), and
+      one file part per uploaded file, keyed so the server can match each
+      back to its declared `Params` field
+- [ ] `POST`s via `fetch` with the given `AbortSignal`; on a non-2xx
+      response, throws a typed error carrying the status (so
+      `use-recipe-run.ts` can distinguish a `429` from a `422`/`5xx`) rather
+      than starting to iterate a stream that was never actually a stream
+- [ ] Each yielded item is already zod-parsed via Task 1 — a malformed
+      event from the server throws a typed error, not a silent skip
+- [ ] Aborting the signal stops iteration promptly (the underlying `fetch`
+      is aborted, not just the caller's own loop)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/run-client`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 1, 2
+
+**Files likely touched:**
+- `frontend/lib/execution/run-client.ts`
+- `frontend/tests/execution/run-client.test.ts`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+## Checkpoint: Client + fixtures merged (after Tasks 3-4)
+- [ ] `bun run typecheck`, `lint`, `test` clean; no conflicts
+- [ ] **Human review before the hook**
+
+---
+
+## Phase 3: The run hook (sequential)
+
+### Task 5: `hooks/use-recipe-run.ts` + `useBackendBaseUrl`
+
+**Description:** The reducer-based hook per the spec's Code Style sample,
+plus the `useBackendBaseUrl()` hook `catalog` deliberately left for this
+module to build (see plan's Architecture Decisions).
+
+**Acceptance criteria:**
+- [ ] `useBackendBaseUrl()`: `settings.customBackendUrl || NEXT_PUBLIC_BACKEND_URL default`
+      — reads `useSettings()` (already built), matching the exact fallback
+      logic the spec's own comment describes
+- [ ] `useRecipeRun(slug)` returns `{ status, events, result, error, start, cancel }`
+      (or your close equivalent — document any shape deviation)
+- [ ] `status` transitions `idle → running → done | error`, back to `idle`
+      on a fresh `start()` call (cancel-and-restart, per Open Question 5's
+      leaning)
+- [ ] `start(payload)` creates a fresh `AbortController`, iterates
+      `postRun(...)`, dispatching each event; `cancel()` aborts the current
+      controller
+- [ ] A transport-level failure (network error, non-2xx before any stream
+      started) is distinguished in `error` from an in-stream `ErrorEvent` —
+      both are real errors, but a `429` specifically must be identifiable
+      (so a later renderer task can route it to `<RateLimitNotice>` instead
+      of `<RunError>`)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test hooks/use-recipe-run`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Task 4
+
+**Files likely touched:**
+- `frontend/hooks/use-recipe-run.ts`
+- `frontend/lib/execution/backend-url.ts`
+- `frontend/tests/hooks/use-recipe-run.test.tsx`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+## Checkpoint: Hook complete
+- [ ] `bun run test`, `typecheck`, `lint` clean
+- [ ] **Human review before backend work**
+
+---
+
+## Phase 4: Backend — parallel batch, then sequential endpoint
+
+### Task 6 [PARALLEL — Track A]: `backend/src/skillet/execution/request.py`
+
+**Description:** Parses and validates a run request into `(Params, config,
+files)` — every rejection (`404`/`422`/`413`) happens here, before any
+recipe code runs.
+
+**Acceptance criteria:**
+- [ ] Unknown slug → the caller can produce a `404` (this function itself
+      may just raise/return a typed "not found" — the actual HTTP status
+      mapping can live in Task 8's endpoint; document whichever split you
+      choose)
+- [ ] Parses the `params` form field as JSON, validates against the
+      recipe's real `Params` class (via `load_recipe`) — a validation
+      failure surfaces field-level errors for a `422`
+- [ ] Parses the `config` form field as JSON; a key not in the recipe's
+      declared `env` → `422` (never silently dropped, never passed through)
+- [ ] Multipart file parts are matched to the `Params` fields declared as
+      file inputs (`list[UploadedFile]`, per `json_schema_extra`'s
+      `accept`/`max_files`) and wrapped as real `UploadedFile` instances
+      assigned into the parsed `Params` — see the plan's Architecture
+      Decision on this (NOT `ctx.files`)
+- [ ] Caps enforced before recipe code runs: per-file ≤ 5 MB, total ≤ 20
+      MB, ≤ 10 files, extension must be in the field's declared `accept` —
+      any breach → `413`-mappable rejection
+- [ ] Uploaded bytes are staged in a per-run temp directory, not held
+      entirely in memory for the whole request (per Confirmed Decision 4)
+
+**Verification:**
+- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_request.py`
+- [ ] `uv run ruff check .`
+
+**Dependencies:** `recipe-framework` only (already built)
+
+**Files likely touched:**
+- `backend/src/skillet/execution/request.py`
+- `backend/tests/execution/test_request.py`
+
+**Estimated scope:** Medium: 3-5 files (this is the most involved backend piece)
+
+---
+
+### Task 7 [PARALLEL — Track B]: `backend/src/skillet/execution/keys.py`
+
+**Description:** The log-redaction filter — every log line gets scrubbed of
+any value that came in via `config`, before it's ever written anywhere.
+
+**Acceptance criteria:**
+- [ ] A `logging.Filter` subclass that redacts any string matching a
+      known-sensitive value (the actual `config` values for the current
+      run, injected per-request — e.g. via `contextvars`, so the filter
+      doesn't need a request object threaded through every log call) from
+      a record's message and args before it's emitted
+- [ ] Also redacts common key-shaped patterns as defense in depth (e.g. a
+      long alphanumeric string that looks like an API key) even if it
+      didn't come from this run's own `config` — document the exact
+      heuristic
+- [ ] A sentinel test: log a message containing a known fake "key" value
+      through a real logger with this filter attached, assert the captured
+      output never contains it
+- [ ] Config itself is never written to disk, DB, or cache anywhere in this
+      module (true by construction — `ctx.config` is an in-memory mapping
+      for the duration of one `execute()` call only)
+
+**Verification:**
+- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_key_hygiene.py`
+- [ ] `uv run ruff check .`
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `backend/src/skillet/execution/keys.py`
+- `backend/tests/execution/test_key_hygiene.py`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+### Task 8: `backend/src/skillet/api/run.py` + `execution/stream.py`
+
+**Description:** The actual endpoint: recipe lookup, `parse_run_request`,
+`execute()`, SSE streaming — per the spec's own Code Style sample.
+
+**Acceptance criteria:**
+- [ ] `POST /recipes/{slug}/run`: unknown slug → `404`; a request rejected
+      by Task 6's parsing → the mapped `422`/`413`, before `execute()` is
+      ever called
+- [ ] Wraps `recipe-framework`'s `execute()` (already built — reuse it
+      directly, do not reimplement any of its timeout/cap/cancellation
+      logic), yielding `ServerSentEvent(data=event.model_dump_json())` per
+      event
+- [ ] `Content-Type: text/event-stream` on the response
+- [ ] A client disconnect (request aborted) cancels the underlying
+      `asyncio` task and cleans up the per-run temp directory in a
+      `finally` — verified by checking the directory is actually gone
+      after a simulated disconnect, not just assumed from `sse-starlette`'s
+      own behavior
+- [ ] Every log line this endpoint (or anything it calls) emits during a
+      request goes through Task 7's redaction filter
+
+**Verification:**
+- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_run_endpoint.py tests/execution/test_cancel.py`
+- [ ] `uv run ruff check .`
+- [ ] Manual: `curl -N` (or equivalent) against a real bundled recipe shows
+      incrementally-arriving SSE lines, not one buffered blob
+
+**Dependencies:** Tasks 6, 7
+
+**Files likely touched:**
+- `backend/src/skillet/api/run.py`
+- `backend/src/skillet/execution/stream.py`
+- `backend/tests/execution/test_run_endpoint.py`
+- `backend/tests/execution/test_cancel.py`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 9: Backend integration tests + CI log-grep
+
+**Description:** The remaining endpoint-contract and streaming-behavior
+tests Task 8 didn't already cover, plus the CI step grepping captured log
+output for a sentinel key value.
+
+**Acceptance criteria:**
+- [ ] Streaming: first byte arrives well before a deliberately-slow fixture
+      recipe finishes (proves no whole-response buffering); event order is
+      preserved; exactly one terminal `result` or `error` per run
+- [ ] A recipe that breaches `recipe-framework`'s own timeout/output-limit
+      thresholds produces the corresponding terminal `error` event,
+      streamed correctly through THIS endpoint — verifying the wiring
+      carries it through, not re-deriving the 90s/256KB/2000-event
+      enforcement itself (already covered by `recipe-framework`'s own
+      `test_executor_run.py`)
+- [ ] A CI step (documented — a script or a CI config addition, your call
+      on the exact mechanism) runs the test suite with a sentinel value
+      injected as a fake key, captures all log output, and fails the build
+      if the sentinel appears anywhere in it
+- [ ] `execution/` package reaches ≥ 90% line coverage
+
+**Verification:**
+- [ ] `cd backend && uv run pytest --cov=skillet.execution --cov-report=term-missing`
+- [ ] `uv run ruff check .`
+
+**Dependencies:** Task 8
+
+**Files likely touched:**
+- `backend/tests/execution/test_run_endpoint.py` (extended)
+- CI config / a log-grep script (exact location your call — document it)
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Backend complete (after Tasks 6-9)
+- [ ] `cd backend && uv run pytest`, `uv run ruff check .` clean; `execution/` ≥ 90% coverage
+- [ ] **Human review before the renderer batch**
+
+---
+
+## Phase 5: Renderers — parallel batch, 3 tracks
+
+*Each takes fully-parsed events (Task 1's types) as props — never raw JSON,
+never a slug to fetch. Built and tested against Task 3's fixtures.*
+
+### Task 10 [PARALLEL — Track A]: `step-timeline.tsx`, `token-pane.tsx`, `log-stream.tsx`
+
+**Acceptance criteria:**
+- [ ] `step-timeline.tsx`: renders each `StepEvent` as a timeline entry
+      (name, status, detail), start/finish pairs collapsed into one visual
+      entry keyed by `id`, an unclosed step (start with no matching
+      finish/error yet) shown as "in progress"
+- [ ] `token-pane.tsx`: accumulates `TokenEvent.text` into a single growing
+      text block (this is the streamed model output) — appends, never
+      replaces or re-renders the whole accumulated text from scratch on
+      every token (a real perf concern for a long stream)
+- [ ] `log-stream.tsx`: renders `LogEvent`s in order, visually distinguishing
+      `info`/`warn`/`error` levels
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/step-timeline execution/token-pane execution/log-stream`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 1, 3
+
+**Files likely touched:**
+- `frontend/components/execution/step-timeline.tsx`
+- `frontend/components/execution/token-pane.tsx`
+- `frontend/components/execution/log-stream.tsx`
+- matching test files
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 11 [PARALLEL — Track B]: `tool-call-card.tsx`, `run-error.tsx`, `rate-limit-notice.tsx`
+
+**Acceptance criteria:**
+- [ ] `tool-call-card.tsx`: an expandable card per `ToolCallEvent` (name,
+      args, result) — collapsed by default, matching `description-panel`'s
+      own established collapsible convention where reasonable
+- [ ] `run-error.tsx`: one visually distinct rendering per `error_type` (5
+      total) plus a retry affordance for a transport-level error (network/
+      5xx) — a `429` must NOT render here (routed to `rate-limit-notice.tsx`
+      instead, per the spec's own explicit distinction)
+- [ ] `rate-limit-notice.tsx`: renders the `429` contract's exact shape
+      (`scope`, `message`, `retry_after_seconds`, `cta`) as the "add your
+      own key / clone locally" nudge — `cta: "add_key"` links toward
+      `settings`, `cta: "clone_local"` toward the repo/docs (your call on
+      exact copy/links)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/tool-call-card execution/run-error execution/rate-limit-notice`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 1, 3
+
+**Files likely touched:**
+- `frontend/components/execution/tool-call-card.tsx`
+- `frontend/components/execution/run-error.tsx`
+- `frontend/components/execution/rate-limit-notice.tsx`
+- matching test files
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 12 [PARALLEL — Track C]: `artifact/{json-tree,data-table,markdown,file-download}.tsx`
+
+**Acceptance criteria:**
+- [ ] One component per `ArtifactEvent.kind` (`json`, `table`, `markdown`,
+      `file`), dispatched by whichever parent renders them (Task 13, not
+      this task's concern)
+- [ ] `json-tree.tsx`: a collapsible tree view of `data` (reuse or mirror
+      `collapsible-section`'s pattern where it fits)
+- [ ] `data-table.tsx`: renders `data` as rows/columns (document the
+      expected shape you're assuming, e.g. `{ columns: string[]; rows:
+      unknown[][] }` — the spec doesn't pin this down precisely; make a
+      reasonable, documented choice)
+- [ ] `markdown.tsx`: renders `data` (a markdown string) via
+      `react-markdown` + `remark-gfm` (already installed, established
+      pattern from `catalog`'s `description-panel.tsx`) — no raw-HTML
+      passthrough, same safety posture
+- [ ] `file-download.tsx`: for `url`-based artifacts, a labeled link/button
+      (per Open Question 3's "inline + truncate for v1" leaning, this
+      doesn't need to fetch/preview the file itself)
+- [ ] Each truncates a large payload with a visible "truncated" note rather
+      than rendering an unbounded blob (per Open Question 3)
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/artifact`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Tasks 1, 3
+
+**Files likely touched:**
+- `frontend/components/execution/artifact/json-tree.tsx`
+- `frontend/components/execution/artifact/data-table.tsx`
+- `frontend/components/execution/artifact/markdown.tsx`
+- `frontend/components/execution/artifact/file-download.tsx`
+- matching test files
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+## Checkpoint: Renderers merged (after Tasks 10-12)
+- [ ] Each track's tests pass; no conflicts; `bun run typecheck`, `lint`, `test` clean
+- [ ] **Human review before the orchestrator**
+
+---
+
+## Phase 6: Orchestration (sequential)
+
+### Task 13: `components/execution/run-output.tsx`
+
+**Description:** Composes Task 5's `useRecipeRun` output with Phase 5's
+renderers into the single component `catalog`/`workspace` mount.
+
+**Acceptance criteria:**
+- [ ] Dispatches each event to the right sub-renderer by `type` (and
+      `ArtifactEvent.kind` for artifacts) — never renders event bytes as
+      HTML itself, never lets a parent reach into the event stream
+- [ ] A `429` response (from `useRecipeRun`'s transport-error path) renders
+      `<RateLimitNotice>`, never `<RunError>`
+- [ ] Partial output (tokens/steps/tool-calls already streamed) stays
+      visible above a terminal `error`'s banner — not cleared (per Open
+      Question 2's leaning)
+- [ ] Every event type, every `error_type`, and the `429` notice each
+      render distinctly when driven directly from Task 3's fixtures, with
+      no backend running (success criterion 6) — a dedicated fixture-driven
+      test proves this for all 5+7+1 cases, not just a couple
+
+**Verification:**
+- [ ] Tests pass: `cd frontend && bun run test execution/run-output`
+- [ ] `bun run typecheck && bun run lint`
+
+**Dependencies:** Task 5, Phase 5
+
+**Files likely touched:**
+- `frontend/components/execution/run-output.tsx`
+- `frontend/tests/execution/run-output.test.tsx`
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+## Checkpoint: Renderer complete
+- [ ] Every event type + every `error_type` + the `429` notice render distinctly from fixtures, no backend running
+- [ ] **Human review before cross-module wiring**
+
+---
+
+## Phase 7: Cross-module wiring + E2E (sequential)
+
+### Task 14: Wire `<RunOutput>` into `catalog`'s recipe page
+
+**Description:** The real integration point: `RunForm`'s `onSubmit` starts
+a real run, `<RunOutput>` renders it, mounted below the form in
+`recipe-view.tsx`.
+
+**Acceptance criteria:**
+- [ ] `app/r/[slug]/recipe-view.tsx` mounts `<RunOutput slug={slug} />` (or
+      your close equivalent) below `<RunForm>`
+- [ ] `RunForm`'s `onSubmit` payload (`{ params, recipeSlug }`) is wired to
+      `useRecipeRun(slug).start(...)`, replacing the `// TODO(execution)`
+      no-op left there since `catalog`'s Task 14
+- [ ] `RecipeOverrides`' resolved config (already computed inside
+      `RunForm` via `useResolvedConfig`) is what actually gets sent as the
+      run's `config` — confirm this end-to-end, not just that a `config`
+      object of *some* shape is sent
+- [ ] Browsing (description/examples/source) still renders and works
+      exactly as `catalog`'s own tests already prove — this task must not
+      regress any of `catalog`'s existing test suite
+
+**Verification:**
+- [ ] `bun run typecheck && bun run lint`
+- [ ] `bun run test` — `catalog`'s existing `recipe-view.test.tsx` and
+      `run-form.test.tsx` still pass, plus new assertions for the wiring
+- [ ] `bun run build` succeeds
+
+**Dependencies:** Task 13
+
+**Files likely touched:**
+- `frontend/app/r/[slug]/recipe-view.tsx`
+- `frontend/components/catalog/run-form/run-form.tsx` (only if the
+  `onSubmit` prop shape itself needs to change — try to avoid this; prefer
+  wiring at the call site in `recipe-view.tsx`)
+- `frontend/tests/catalog/recipe-view.test.tsx` (extended)
+
+**Estimated scope:** Medium: 3-5 files
+
+---
+
+### Task 15: Playwright E2E against a real echo recipe
+
+**Description:** One real end-to-end run, against a live backend, through
+the actual UI — not fixtures, not mocks.
+
+**Acceptance criteria:**
+- [ ] Reuses `catalog`'s E2E infrastructure (`backend/scripts/
+      e2e_recipes_server.py`, the dual-`webServer` `playwright.config.ts`
+      setup) rather than building a second parallel backend-launching
+      mechanism
+- [ ] Fills the real `echo` recipe's form, clicks Run, asserts streamed
+      output appears (the echoed message), and a terminal state is reached
+- [ ] Cancel mid-run actually stops the stream client-side (assert no
+      further UI updates after cancel — the server-side task-cancellation
+      /tempdir-cleanup guarantee is already covered by Task 8's backend
+      test, this is the client's own cancel button/affordance)
+
+**Verification:**
+- [ ] `cd frontend && bun run test:e2e` — new spec passes, stable across 3
+      consecutive runs
+
+**Dependencies:** Task 14
+
+**Files likely touched:**
+- `frontend/e2e/run-recipe.spec.ts`
+
+**Estimated scope:** Small: 1-2 files
+
+---
+
+## Checkpoint: Integration complete
+- [ ] `bun run build` succeeds; manual + E2E check against a live backend passes
+- [ ] **Human review before sign-off**
+
+---
+
+## Phase 8: Sign-off (sequential)
+
+### Task 16: Success-criteria sign-off pass
+
+**Description:** Map each of `SPEC-execution.md`'s 7 numbered Success
+Criteria to the test(s) that verify it, matching the precedent from every
+prior module.
+
+**Acceptance criteria:**
+- [ ] A sign-off table (appended to `tasks/plan-execution.md`) lists all 7
+      criteria against their verification, honestly noting any partial/
+      carried-forward criterion
+- [ ] `cd backend && uv run pytest && uv run ruff check .` clean;
+      `execution/` ≥ 90% coverage
+- [ ] `cd frontend && bun run {build,lint,typecheck,test,test:e2e}` all green
+
+**Verification:**
+- [ ] Full command suite above, run once at the end
+
+**Dependencies:** Tasks 1-15
+
+**Files likely touched:**
+- `tasks/plan-execution.md` (sign-off table appended)
+
+**Estimated scope:** Small: 1 file
+
+---
+
+## Checkpoint: Module complete (after Task 16)
+- [ ] All 7 success criteria individually verified
+- [ ] Full suite (backend + frontend) + lint + typecheck + build + E2E green
+- [ ] **Human review before `trial-limits`/`workspace` begin consuming this module**
