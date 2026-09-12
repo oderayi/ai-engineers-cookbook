@@ -11,15 +11,15 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** `<RecipeView>`'s `onStatusChange` prop exists and is typed but is never invoked (documented as out-of-scope, left for `workspace`, in `execution`'s own Task 14). Make it real.
 
 **Acceptance criteria:**
-- [ ] `RunOutput` (`frontend/components/execution/run-output.tsx`) gains an optional `onStatusChange?: (status: RunStatus) => void` prop; a `useEffect` calls it whenever `useRecipeRun`'s `status` changes (including on mount, with the initial `"idle"` — document whether the initial call happens or only on subsequent transitions, matching whichever the spec's own "idle → running → done | error" phrasing implies, and write a test that pins down the choice either way)
-- [ ] `recipe-view.tsx` forwards its own existing `onStatusChange` prop straight through to `<RunOutput onStatusChange={onStatusChange} />` — no transformation, no adapter
-- [ ] `execution`'s full test suite (backend unaffected; frontend 550 tests) and `catalog`'s full test suite both still pass, unmodified in behavior (assertion counts may grow, not shrink or change meaning)
-- [ ] New tests: `RunOutput`'s `onStatusChange` fires on each real transition (idle→running→done, idle→running→error, running→idle on cancel) using the same mocked-`postRun` pattern as `use-recipe-run.test.tsx`; `recipe-view.tsx`'s existing "accepts an unused onStatusChange prop" test is renamed/rewritten to prove it's now actually used
+- [x] `RunOutput` (`frontend/components/execution/run-output.tsx`) gains an optional `onStatusChange?: (status: RunStatus) => void` prop; a `useEffect` calls it whenever `useRecipeRun`'s `status` changes (including on mount, with the initial `"idle"` — document whether the initial call happens or only on subsequent transitions, matching whichever the spec's own "idle → running → done | error" phrasing implies, and write a test that pins down the choice either way)
+- [x] `recipe-view.tsx` forwards its own existing `onStatusChange` prop straight through to `<RunOutput onStatusChange={onStatusChange} />` — no transformation, no adapter
+- [x] `execution`'s full test suite (backend unaffected; frontend 550 tests) and `catalog`'s full test suite both still pass, unmodified in behavior (assertion counts may grow, not shrink or change meaning)
+- [x] New tests: `RunOutput`'s `onStatusChange` fires on each real transition (idle→running→done, idle→running→error, running→idle on cancel) using the same mocked-`postRun` pattern as `use-recipe-run.test.tsx`; `recipe-view.tsx`'s existing "accepts an unused onStatusChange prop" test is renamed/rewritten to prove it's now actually used
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/run-output catalog/recipe-view`
-- [ ] `bun run typecheck && bun run lint`
-- [ ] Full suite: `bun run test` — no regressions
+- [x] Tests pass: `cd frontend && bun run test execution/run-output catalog/recipe-view`
+- [x] `bun run typecheck && bun run lint`
+- [x] Full suite: `bun run test` — no regressions
 
 **Dependencies:** None (both consumed modules are already complete)
 
@@ -34,8 +34,8 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Amendment complete
-- [ ] Full frontend suite green; typecheck/lint clean
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 2
+- [x] Full frontend suite green (554 tests); typecheck/lint clean
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 2
 
 ---
 

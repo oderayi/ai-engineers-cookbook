@@ -11,14 +11,14 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Sign and verify the `sk_aid` anonymous-id cookie.
 
 **Acceptance criteria:**
-- [ ] `issue(secret: bytes) -> str`: a fresh opaque random id (`secrets.token_urlsafe(16)`) HMAC-SHA256-signed with `secret`, returned as `"{anon_id}.{sig}"`
-- [ ] `verify(cookie_value: str, secret: bytes) -> str | None`: returns the recovered `anon_id` for a value this module issued; returns `None` (never raises) for a missing separator, a tampered signature, or an empty string
-- [ ] Uses `hmac.compare_digest` for signature comparison (timing-safe)
-- [ ] `COOKIE_NAME = "sk_aid"`, `COOKIE_MAX_AGE` = 1 year, matching the spec's own constants
+- [x] `issue(secret: bytes) -> str`: a fresh opaque random id (`secrets.token_urlsafe(16)`) HMAC-SHA256-signed with `secret`, returned as `"{anon_id}.{sig}"`
+- [x] `verify(cookie_value: str, secret: bytes) -> str | None`: returns the recovered `anon_id` for a value this module issued; returns `None` (never raises) for a missing separator, a tampered signature, or an empty string
+- [x] Uses `hmac.compare_digest` for signature comparison (timing-safe)
+- [x] `COOKIE_NAME = "sk_aid"`, `COOKIE_MAX_AGE` = 1 year, matching the spec's own constants
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_cookie.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_cookie.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** None
 
@@ -37,14 +37,14 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** A thin async wrapper over Upstash Redis's REST API, exposing exactly the four commands this module needs.
 
 **Acceptance criteria:**
-- [ ] `UpstashRedis(base_url: str, token: str)` — constructed once at app startup, held on `app.state.trial_redis`
-- [ ] `async def incr(key: str) -> int`, `async def incrby(key: str, amount: int) -> int`, `async def expire(key: str, seconds: int) -> None`, `async def get(key: str) -> str | None` — each a single HTTPS call via `httpx.AsyncClient`, using Upstash's REST command format (verify the real request/response shape from Upstash's own REST API docs rather than guessing — e.g. `GET {base_url}/incr/{key}` with `Authorization: Bearer {token}`, response `{"result": <int>}`)
-- [ ] `respx` (added as a dev dependency) mocks every HTTP call in tests — no live Upstash account touched
-- [ ] A non-2xx response or malformed JSON body raises a clear, typed exception (not a bare `KeyError`/`json.JSONDecodeError` leaking out)
+- [x] `UpstashRedis(base_url: str, token: str)` — constructed once at app startup, held on `app.state.trial_redis`
+- [x] `async def incr(key: str) -> int`, `async def incrby(key: str, amount: int) -> int`, `async def expire(key: str, seconds: int) -> None`, `async def get(key: str) -> str | None` — each a single HTTPS call via `httpx.AsyncClient`, using Upstash's REST command format (verify the real request/response shape from Upstash's own REST API docs rather than guessing — e.g. `GET {base_url}/incr/{key}` with `Authorization: Bearer {token}`, response `{"result": <int>}`)
+- [x] `respx` (added as a dev dependency) mocks every HTTP call in tests — no live Upstash account touched
+- [x] A non-2xx response or malformed JSON body raises a clear, typed exception (not a bare `KeyError`/`json.JSONDecodeError` leaking out)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_redis_client.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_redis_client.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** None
 
@@ -58,8 +58,8 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 ---
 
 ## Checkpoint: Foundation (after Tasks 1-2)
-- [ ] Each track's tests pass; no conflicts; `uv run ruff check .` clean
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 2
+- [x] Each track's tests pass (191 backend tests total); no conflicts; `uv run ruff check .` clean
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 2
 
 ---
 
