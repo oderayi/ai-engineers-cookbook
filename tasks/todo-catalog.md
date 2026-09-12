@@ -15,23 +15,26 @@ group `title`/`icon` (already resolved server-side via `discovery.py`,
 never serialized) so the sidebar nav tree has something to render.
 
 **Acceptance criteria:**
-- [ ] `backend/src/skillet/api/app.py`: `CORSMiddleware` added, allowed
+- [x] `backend/src/skillet/api/app.py`: `CORSMiddleware` added, allowed
       origins from an env var (e.g. `SKILLET_CORS_ORIGINS`, comma-separated),
       defaulting to `http://localhost:3000` when unset
-- [ ] `RecipeSummary` and `RecipeDetail` (`api/schemas.py`) gain
+- [x] `RecipeSummary` and `RecipeDetail` (`api/schemas.py`) gain
       `group_title: str` / `group_icon: str | None` (wire: `groupTitle`,
       `groupIcon`), populated from `DiscoveredRecipe.group.title` / `.icon`
       in `api/recipes.py`'s two endpoint functions
-- [ ] `SPEC-recipe-framework.md` and `SPEC-catalog.md` each get a short
+- [x] `SPEC-recipe-framework.md` and `SPEC-catalog.md` each get a short
       "amendment" note (matching the existing precedent in `SPEC-catalog.md`
       for `inputSchema`/`sourceFiles`/`env`/`examples`/`readmeMarkdown`)
-- [ ] No existing `recipe-framework` success criterion regresses
+- [x] No existing `recipe-framework` success criterion regresses
 
 **Verification:**
-- [ ] Backend tests pass: `cd backend && uv run pytest`
-- [ ] `cd backend && uv run ruff check .`
-- [ ] Manual: `curl` (or a quick test) confirms `Access-Control-Allow-Origin`
-      is present on a response to an `Origin: http://localhost:3000` request
+- [x] Backend tests pass: `cd backend && uv run pytest` (123/123)
+- [x] `cd backend && uv run ruff check .`
+- [x] Manual: no ASGI server (uvicorn/`fastapi[standard]`) is installed in
+      this backend yet (that's `distribution`'s job) — CORS is verified
+      instead via `TestClient`/httpx against the real ASGI app in
+      `test_api_app.py`, which genuinely exercises `CORSMiddleware`, not a
+      mock
 
 **Dependencies:** None
 
@@ -56,20 +59,20 @@ wire contract (`backend/src/skillet/api/schemas.py`), including `examples`
 corrected here) and the new `groupTitle`/`groupIcon` fields from Task 0.
 
 **Acceptance criteria:**
-- [ ] `EnvVar`, `Example`, `SourceFileRef`, `RecipeSummary`, `RecipeDetail`,
+- [x] `EnvVar`, `Example`, `SourceFileRef`, `RecipeSummary`, `RecipeDetail`,
       `SourceFileWithContent`, `SourceBundle` all defined, field-for-field
       matching the backend's `CamelModel` output
-- [ ] `RecipeDetail.env` is typed so it's assignable to `settings`'
+- [x] `RecipeDetail.env` is typed so it's assignable to `settings`'
       `RecipeOverridesProps["recipe"]["env"]` (`RecipeEnvDecl[]`) with no
       cast — add the same kind of compile-time-only assertion `settings`
       used in `tests/settings/recipe-overrides.test.tsx`
-- [ ] `difficulty` is `z.enum(["basic", "intermediate", "advanced"])`
-- [ ] A minimal and a fully-populated fixture object each parse via
+- [x] `difficulty` is `z.enum(["basic", "intermediate", "advanced"])`
+- [x] A minimal and a fully-populated fixture object each parse via
       `RecipeDetail.parse(...)` with no errors
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test api/models`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test api/models` (13/13)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Task 0 (needs the real field names/shapes to mirror)
 
@@ -91,20 +94,20 @@ This is the data every later task tests against — get realistic variety in
 now rather than adding it piecemeal later.
 
 **Acceptance criteria:**
-- [ ] Every fixture `RecipeDetail`/`SourceBundle` parses via Task 1's zod
+- [x] Every fixture `RecipeDetail`/`SourceBundle` parses via Task 1's zod
       schemas with no errors (a test enforces this, so a future edit to a
       fixture that drifts from the schema fails loudly)
-- [ ] At least one recipe has a `list[UploadedFile]`-shaped field in its
+- [x] At least one recipe has a `list[UploadedFile]`-shaped field in its
       `inputSchema` (for Task 5/13's file-dropzone control) and at least one
       has an `enum` field (for the select control) and a constrained
       `int`/`number` field (for slider/number)
-- [ ] `RecipeSummary[]` fixture list is in the same sorted order
+- [x] `RecipeSummary[]` fixture list is in the same sorted order
       `discover()` would produce (group order, then recipe order) — not
       alphabetical or insertion order by coincidence
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test fixtures/catalog`
-- [ ] `bun run typecheck`
+- [x] Tests pass: `cd frontend && bun run test fixtures/catalog` (9/9)
+- [x] `bun run typecheck`
 
 **Dependencies:** Task 1
 
