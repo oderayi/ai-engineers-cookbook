@@ -46,14 +46,14 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The versioned, Zod-validated `localStorage` blob and its migration path, mirroring `settings`' own `resolve.ts`/`storage.ts`/`migrations.ts` pattern.
 
 **Acceptance criteria:**
-- [ ] `workspaceV1Schema` matches the spec's own Code Style sample exactly: `version`, `tabs: {id, slug}[]`, `activeTabId: string | null`, `progress: Record<slug, {viewedAt, completedAt}>`
-- [ ] `emptyWorkspace(): WorkspaceV1` — the all-defaults value
-- [ ] `migrate(raw: unknown): WorkspaceV1` — an unversioned/legacy blob upgrades to `CURRENT_VERSION`; a blob newer than `CURRENT_VERSION` is discarded for `emptyWorkspace()`; malformed JSON/wrong shape is discarded for defaults (never throws into the caller); unknown extra top-level keys are stripped, not silently persisted forward (a real test proves this, not just schema `.strict()`/passthrough assumptions)
-- [ ] `STORAGE_KEY = "skillet.workspace"`
+- [x] `workspaceV1Schema` matches the spec's own Code Style sample exactly: `version`, `tabs: {id, slug}[]`, `activeTabId: string | null`, `progress: Record<slug, {viewedAt, completedAt}>`
+- [x] `emptyWorkspace(): WorkspaceV1` — the all-defaults value
+- [x] `migrate(raw: unknown): WorkspaceV1` — an unversioned/legacy blob upgrades to `CURRENT_VERSION`; a blob newer than `CURRENT_VERSION` is discarded for `emptyWorkspace()`; malformed JSON/wrong shape is discarded for defaults (never throws into the caller); unknown extra top-level keys are stripped, not silently persisted forward (a real test proves this, not just schema `.strict()`/passthrough assumptions)
+- [x] `STORAGE_KEY = "skillet.workspace"`
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test workspace/migrations`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test workspace/migrations`
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -72,16 +72,16 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The pure in-memory tabs reducer, per the spec's own Code Style sample.
 
 **Acceptance criteria:**
-- [ ] `OPEN_TAB` appends a new tab with a fresh `crypto.randomUUID()` id (even for a slug already open — duplicate tabs allowed) and activates it
-- [ ] `CLOSE_TAB` on the active tab activates its right neighbor, falling back to its left neighbor, falling back to `null` when it was the last tab; on an inactive tab, `activeTabId` is unchanged
-- [ ] `ACTIVATE_TAB` on an unknown id is a no-op (returns the same state reference, or an equal one — document which)
-- [ ] `RESTORE` replaces state wholesale
-- [ ] ≥ 95% line coverage on this file (the spec's own bar — load-bearing logic)
+- [x] `OPEN_TAB` appends a new tab with a fresh `crypto.randomUUID()` id (even for a slug already open — duplicate tabs allowed) and activates it
+- [x] `CLOSE_TAB` on the active tab activates its right neighbor, falling back to its left neighbor, falling back to `null` when it was the last tab; on an inactive tab, `activeTabId` is unchanged
+- [x] `ACTIVATE_TAB` on an unknown id is a no-op (returns the same state reference, or an equal one — document which)
+- [x] `RESTORE` replaces state wholesale
+- [x] ≥ 95% line coverage on this file (the spec's own bar — load-bearing logic)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test workspace/tabs-reducer`
-- [ ] `bun run test:coverage` — `tabs-reducer.ts` ≥ 95%
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test workspace/tabs-reducer`
+- [x] `bun run test:coverage` — `tabs-reducer.ts` ≥ 95%
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -98,15 +98,15 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** Pure functions over the progress ledger slice, per the spec's own Code Style sample.
 
 **Acceptance criteria:**
-- [ ] `markViewed(progress, slug, now?)` — sets `viewedAt` once; idempotent on repeat calls (never overwrites an existing non-null `viewedAt`)
-- [ ] `markCompleted(progress, slug, now?)` — sets/overwrites `completedAt` on every call; never disturbs `viewedAt` (sets it only if it was previously null, matching the sample's `existing?.viewedAt ?? now`)
-- [ ] `toNavBadges(progress) -> Record<slug, {viewed: boolean; completed: boolean}>` — the exact shape `catalog`'s (amended) `nav-tree.tsx` prop expects, cross-checked against that file's real prop type once Task 1's amendment (or a stub matching it) exists
-- [ ] ≥ 95% line coverage on this file
+- [x] `markViewed(progress, slug, now?)` — sets `viewedAt` once; idempotent on repeat calls (never overwrites an existing non-null `viewedAt`)
+- [x] `markCompleted(progress, slug, now?)` — sets/overwrites `completedAt` on every call; never disturbs `viewedAt` (sets it only if it was previously null, matching the sample's `existing?.viewedAt ?? now`)
+- [x] `toNavBadges(progress) -> Record<slug, {viewed: boolean; completed: boolean}>` — the exact shape `catalog`'s (amended) `nav-tree.tsx` prop expects, cross-checked against that file's real prop type once Task 1's amendment (or a stub matching it) exists
+- [x] ≥ 95% line coverage on this file
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test workspace/progress`
-- [ ] `bun run test:coverage` — `progress.ts` ≥ 95%
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test workspace/progress`
+- [x] `bun run test:coverage` — `progress.ts` ≥ 95%
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** None
 
@@ -119,8 +119,8 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Persisted state (after Tasks 2-4)
-- [ ] Each track's tests pass; no conflicts; coverage bars met
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 3
+- [x] Each track's tests pass (43 workspace tests, 597 total); no conflicts; coverage bars met (100% on both `tabs-reducer.ts` and `progress.ts`, well above the 95% bar)
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 3
 
 ---
 

@@ -70,13 +70,13 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Derives the rate-limit identity (IP hash + anonymous cookie id) from a request, issuing a fresh cookie when absent/invalid.
 
 **Acceptance criteria:**
-- [ ] `Identity(ip_hash: str, anon_id: str)` — `ip_hash = sha256(request.client.host)` (hex digest); `anon_id` from `cookie.verify(...)` on the existing `sk_aid` cookie, or a freshly `cookie.issue(...)`-ed one when absent/invalid
-- [ ] `Identity.from_request(request: Request, secret: bytes) -> Identity` — the one constructor; also returns (or otherwise makes available to the caller) whether a NEW cookie needs to be set on the response, and its value — document the exact mechanism chosen (e.g. a second return value, an attribute, or setting it directly via a response object passed in) since `gate_trial_run`/the endpoint needs to actually call `Set-Cookie` on a fresh identity
-- [ ] The issued cookie's attributes match the spec exactly: `httpOnly`, `Secure`, `SameSite=Lax`, ~1-year `Max-Age`
+- [x] `Identity(ip_hash: str, anon_id: str)` — `ip_hash = sha256(request.client.host)` (hex digest); `anon_id` from `cookie.verify(...)` on the existing `sk_aid` cookie, or a freshly `cookie.issue(...)`-ed one when absent/invalid
+- [x] `Identity.from_request(request: Request, secret: bytes) -> Identity` — the one constructor; also returns (or otherwise makes available to the caller) whether a NEW cookie needs to be set on the response, and its value — document the exact mechanism chosen (e.g. a second return value, an attribute, or setting it directly via a response object passed in) since `gate_trial_run`/the endpoint needs to actually call `Set-Cookie` on a fresh identity
+- [x] The issued cookie's attributes match the spec exactly: `httpOnly`, `Secure`, `SameSite=Lax`, ~1-year `Max-Age`
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_identity.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_identity.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** Task 1
 
@@ -93,15 +93,15 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** Per-identity daily trial-run counters (IP-hash-keyed and cookie-keyed, both independently capped), UTC-day-suffixed, self-expiring.
 
 **Acceptance criteria:**
-- [ ] `_day_key(scope: str, ident: str) -> str` → `f"trial:count:{scope}:{ident}:{YYYYMMDD}"` (UTC)
-- [ ] `increment_and_check(redis, identity) -> bool` — bumps BOTH the `ip` and `cookie` scoped counters unconditionally (a denied attempt still counts — the "casual limiting" design, asserted explicitly in a test so it can't be "fixed" by accident later), returns `True` only if both are `<= DAILY_TRIAL_CAP` after incrementing
-- [ ] `EXPIRE` is set to `COUNTER_TTL_SECONDS` (~25h) only on the increment that returns `1` (that key's first write of the day) — verified directly (a mock asserting `expire` is called exactly once across repeated increments within the same day)
-- [ ] `time-machine` test: advancing the clock past UTC midnight and incrementing again starts a fresh count at `1` on the new day's key, regardless of the old key's remaining TTL
-- [ ] `DAILY_TRIAL_CAP` reads `SKILLET_TRIAL_DAILY_CAP` env var, default `2`
+- [x] `_day_key(scope: str, ident: str) -> str` → `f"trial:count:{scope}:{ident}:{YYYYMMDD}"` (UTC)
+- [x] `increment_and_check(redis, identity) -> bool` — bumps BOTH the `ip` and `cookie` scoped counters unconditionally (a denied attempt still counts — the "casual limiting" design, asserted explicitly in a test so it can't be "fixed" by accident later), returns `True` only if both are `<= DAILY_TRIAL_CAP` after incrementing
+- [x] `EXPIRE` is set to `COUNTER_TTL_SECONDS` (~25h) only on the increment that returns `1` (that key's first write of the day) — verified directly (a mock asserting `expire` is called exactly once across repeated increments within the same day)
+- [x] `time-machine` test: advancing the clock past UTC midnight and incrementing again starts a fresh count at `1` on the new day's key, regardless of the old key's remaining TTL
+- [x] `DAILY_TRIAL_CAP` reads `SKILLET_TRIAL_DAILY_CAP` env var, default `2`
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_counters.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_counters.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** Task 2
 
@@ -118,15 +118,15 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 **Description:** The global daily spend counter and kill-switch.
 
 **Acceptance criteria:**
-- [ ] `_budget_key() -> str` → `f"trial:budget:{YYYYMMDD}"` (UTC)
-- [ ] `is_exhausted(redis) -> bool` — `True` when the current day's spend `>= DAILY_BUDGET_MICROS`
-- [ ] `record_estimated_cost(redis, amount_micros=ESTIMATED_COST_MICROS_PER_RUN) -> None` — `INCRBY`s the budget key, sets `EXPIRE` only when this call created the key (the returned total equals `amount_micros`)
-- [ ] `time-machine` test: the budget key resets at the UTC day boundary same as the per-identity counters
-- [ ] `DAILY_BUDGET_MICROS` reads `SKILLET_TRIAL_DAILY_BUDGET_USD` (default `5.00`, converted to micros)
+- [x] `_budget_key() -> str` → `f"trial:budget:{YYYYMMDD}"` (UTC)
+- [x] `is_exhausted(redis) -> bool` — `True` when the current day's spend `>= DAILY_BUDGET_MICROS`
+- [x] `record_estimated_cost(redis, amount_micros=ESTIMATED_COST_MICROS_PER_RUN) -> None` — `INCRBY`s the budget key, sets `EXPIRE` only when this call created the key (the returned total equals `amount_micros`)
+- [x] `time-machine` test: the budget key resets at the UTC day boundary same as the per-identity counters
+- [x] `DAILY_BUDGET_MICROS` reads `SKILLET_TRIAL_DAILY_BUDGET_USD` (default `5.00`, converted to micros)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_budget.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/trial_limits/test_budget.py`
+- [x] `uv run ruff check .`
 
 **Dependencies:** Task 2
 
@@ -139,8 +139,8 @@ Plan: [tasks/plan-trial-limits.md](plan-trial-limits.md). Spec: [docs/SPEC-trial
 ---
 
 ## Checkpoint: Identity + counters + budget (after Tasks 3-5)
-- [ ] Each track's tests pass; no conflicts; `uv run ruff check .` clean
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 3
+- [x] Each track's tests pass (221 total, 96% coverage on `trial_limits/`); no conflicts; `uv run ruff check .` clean
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 3
 
 ---
 
