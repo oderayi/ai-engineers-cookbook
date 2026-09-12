@@ -93,20 +93,21 @@ per Task 1) covering every scenario the renderer needs to prove itself
 against with no backend running.
 
 **Acceptance criteria:**
-- [ ] At least: a happy-path run (`step` start → `token`* → `step` finish →
+- [x] At least: a happy-path run (`step` start → `token`* → `step` finish →
       `result`), a token-heavy stream, a run with `tool_call` events, one
       fixture per `error_type` (5 total), and a `429` rate-limit payload
       (the JSON shape from `SPEC-execution.md`'s own `429` contract section
       — not an SSE event, a plain rejected-response body)
-- [ ] Every event line parses via Task 1's zod schema with no errors (a
-      test enforces this)
-- [ ] At least one fixture exercises a partial-output-then-error scenario
+- [x] Every event line parses via Task 1's zod schema with no errors (a
+      test enforces this) — plus a coverage guard that all 7 event types
+      and all 5 `error_type`s appear at least once somewhere
+- [x] At least one fixture exercises a partial-output-then-error scenario
       (tokens stream, then an `error` — no `result`) for the "keep partial
       output visible" behavior `run-output.tsx` (Task 13) needs to prove
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/fixtures`
-- [ ] `bun run typecheck`
+- [x] Tests pass: `cd frontend && bun run test execution/fixtures` (17/17)
+- [x] `bun run typecheck`
 
 **Dependencies:** Task 1
 
@@ -125,23 +126,25 @@ against with no backend running.
 `multipart/form-data` request.
 
 **Acceptance criteria:**
-- [ ] Builds a `FormData` body: `params` (JSON string field), `config`
+- [x] Builds a `FormData` body: `params` (JSON string field), `config`
       (JSON string field — the already-resolved map from `settings`, sent
       verbatim, never recomputed client-side per Confirmed Decision 2), and
-      one file part per uploaded file, keyed so the server can match each
-      back to its declared `Params` field
-- [ ] `POST`s via `fetch` with the given `AbortSignal`; on a non-2xx
-      response, throws a typed error carrying the status (so
-      `use-recipe-run.ts` can distinguish a `429` from a `422`/`5xx`) rather
-      than starting to iterate a stream that was never actually a stream
-- [ ] Each yielded item is already zod-parsed via Task 1 — a malformed
+      one file part per uploaded file, keyed `files[<fieldName>][]` (the
+      wire convention the backend task, Task 6, must match exactly —
+      documented prominently in the file's own doc comment)
+- [x] `POST`s via `fetch` with the given `AbortSignal`; on a non-2xx
+      response, throws a typed error (`RunRequestError`, carrying `status`
+      and a best-effort parsed `body`) rather than starting to iterate a
+      stream that was never actually a stream
+- [x] Each yielded item is already zod-parsed via Task 1 — a malformed
       event from the server throws a typed error, not a silent skip
-- [ ] Aborting the signal stops iteration promptly (the underlying `fetch`
-      is aborted, not just the caller's own loop)
+- [x] Aborting the signal stops iteration promptly — no extra handling on
+      top of `fetch`/`parseSSEStream`'s own abort behavior, by design (an
+      abort-driven rejection propagates exactly as calling either directly)
 
 **Verification:**
-- [ ] Tests pass: `cd frontend && bun run test execution/run-client`
-- [ ] `bun run typecheck && bun run lint`
+- [x] Tests pass: `cd frontend && bun run test execution/run-client` (13/13)
+- [x] `bun run typecheck && bun run lint`
 
 **Dependencies:** Tasks 1, 2
 
@@ -154,7 +157,7 @@ against with no backend running.
 ---
 
 ## Checkpoint: Client + fixtures merged (after Tasks 3-4)
-- [ ] `bun run typecheck`, `lint`, `test` clean; no conflicts
+- [x] `bun run typecheck`, `lint`, `test` clean; no conflicts (53 files, 448/448)
 - [ ] **Human review before the hook**
 
 ---
