@@ -234,29 +234,31 @@ files)` — every rejection (`404`/`422`/`413`) happens here, before any
 recipe code runs.
 
 **Acceptance criteria:**
-- [ ] Unknown slug → the caller can produce a `404` (this function itself
+- [x] Unknown slug → the caller can produce a `404` (this function itself
       may just raise/return a typed "not found" — the actual HTTP status
       mapping can live in Task 8's endpoint; document whichever split you
-      choose)
-- [ ] Parses the `params` form field as JSON, validates against the
+      choose) — **implemented as documented:** `parse_run_request` assumes
+      an already-resolved `DiscoveredRecipe`/`LoadedRecipe`; 404 lookup
+      stays one layer up, in Task 8's endpoint
+- [x] Parses the `params` form field as JSON, validates against the
       recipe's real `Params` class (via `load_recipe`) — a validation
       failure surfaces field-level errors for a `422`
-- [ ] Parses the `config` form field as JSON; a key not in the recipe's
+- [x] Parses the `config` form field as JSON; a key not in the recipe's
       declared `env` → `422` (never silently dropped, never passed through)
-- [ ] Multipart file parts are matched to the `Params` fields declared as
+- [x] Multipart file parts are matched to the `Params` fields declared as
       file inputs (`list[UploadedFile]`, per `json_schema_extra`'s
       `accept`/`max_files`) and wrapped as real `UploadedFile` instances
       assigned into the parsed `Params` — see the plan's Architecture
       Decision on this (NOT `ctx.files`)
-- [ ] Caps enforced before recipe code runs: per-file ≤ 5 MB, total ≤ 20
+- [x] Caps enforced before recipe code runs: per-file ≤ 5 MB, total ≤ 20
       MB, ≤ 10 files, extension must be in the field's declared `accept` —
       any breach → `413`-mappable rejection
-- [ ] Uploaded bytes are staged in a per-run temp directory, not held
+- [x] Uploaded bytes are staged in a per-run temp directory, not held
       entirely in memory for the whole request (per Confirmed Decision 4)
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_request.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/execution/test_request.py` (11/11)
+- [x] `uv run ruff check .` clean
 
 **Dependencies:** `recipe-framework` only (already built)
 
@@ -274,25 +276,45 @@ recipe code runs.
 any value that came in via `config`, before it's ever written anywhere.
 
 **Acceptance criteria:**
-- [ ] A `logging.Filter` subclass that redacts any string matching a
-      known-sensitive value (the actual `config` values for the current
-      run, injected per-request — e.g. via `contextvars`, so the filter
-      doesn't need a request object threaded through every log call) from
-      a record's message and args before it's emitted
-- [ ] Also redacts common key-shaped patterns as defense in depth (e.g. a
-      long alphanumeric string that looks like an API key) even if it
-      didn't come from this run's own `config` — document the exact
-      heuristic
-- [ ] A sentinel test: log a message containing a known fake "key" value
-      through a real logger with this filter attached, assert the captured
-      output never contains it
-- [ ] Config itself is never written to disk, DB, or cache anywhere in this
-      module (true by construction — `ctx.config` is an in-memory mapping
-      for the duration of one `execute()` call only)
+- [x] A `logging.Filter` subclass (`RedactingFilter`) that redacts any
+      string matching a known-sensitive value (the actual `config` values
+      for the current run, injected via `contextvars`'
+      `redaction_context(config)` context manager, so the filter doesn't
+      need a request object threaded through every log call) from a
+      record's message and args before it's emitted — rewrites
+      `record.msg` to the fully-formatted, redacted message and clears
+      `record.args` (a secret passed as a lazy `%s` arg would otherwise
+      survive `record.getMessage()` unredacted)
+- [x] Also redacts common key-shaped patterns as defense in depth
+      (`redact_key_shaped_patterns`: provider-prefixed tokens like
+      `sk-`/`ghp_`/`xox*-`, and generic 20+ char alphanumeric runs) even if
+      they didn't come from this run's own `config` — documented as a
+      heuristic (best-effort, not exhaustive) in the module docstring
+- [x] A sentinel test: log a message containing a known fake "key" value
+      through a real logger with this filter attached (via `caplog`),
+      assert the captured output never contains it
+- [x] Config itself is never written to disk, DB, or cache anywhere in this
+      module (true by construction — the module only ever holds `config`
+      in an in-memory `contextvars.ContextVar` for the duration of a `with
+      redaction_context(...)` block)
+
+**Deviation, documented at implementation time:** the first implementation
+pass (subagent-dispatched, reviewed before landing) delivered only plain
+`redact()`/`redact_exception()` string helpers — no `logging.Filter`, no
+`contextvars`, no key-shaped heuristic — a real gap against this task's own
+acceptance criteria above, since `skillet.recipe.executor`/`emitter` already
+log via the stdlib `logging` module and a plain helper requires every call
+site to remember to invoke it. Closed in a same-day follow-up commit adding
+`redaction_context`, `RedactingFilter`, and `redact_key_shaped_patterns` on
+top of the already-good `redact`/`redact_exception` (which are unchanged and
+still the primitive `RedactingFilter` calls internally).
 
 **Verification:**
-- [ ] Tests pass: `cd backend && uv run pytest tests/execution/test_key_hygiene.py`
-- [ ] `uv run ruff check .`
+- [x] Tests pass: `cd backend && uv run pytest tests/execution/test_keys.py` (17/17;
+      task file's own filename guess, `test_key_hygiene.py`, wasn't used —
+      all redaction tests, including the `logging.Filter` ones, live in
+      `test_keys.py` alongside the module they test)
+- [x] `uv run ruff check .` clean
 
 **Dependencies:** None
 
