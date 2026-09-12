@@ -142,11 +142,49 @@ describe("RecipeView", () => {
     expect(() => ref.current?.cancelRun()).not.toThrow();
   });
 
-  it("accepts an unused onStatusChange prop without crashing (workspace's forward-looking contract)", () => {
+  it("forwards onStatusChange to RunOutput and fires it on a real status transition (workspace's contract, now wired)", async () => {
+    // A gated stream (rather than an instantly-resolving one) so the
+    // intermediate "running" status is guaranteed to commit and be observed
+    // before "done" -- an instantly-resolving stream can have React batch
+    // "running" and "done" into a single commit, which would make this test
+    // assert an artifact of timing rather than the real contract.
+    let released: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      released = resolve;
+    });
+    const user = userEvent.setup();
+    mockPostRun.mockReturnValue(
+      (async function* () {
+        yield {
+          type: "step",
+          id: "s1",
+          name: "Answering",
+          status: "start",
+          detail: null,
+          ts: 0.01,
+        } satisfies RecipeEvent;
+        await gate;
+        yield { type: "result", data: { answer: "4" }, ts: 0.02 } satisfies RecipeEvent;
+      })()
+    );
     mockUseRecipe.mockReturnValue(mockResult({ data: promptBasics }));
     const onStatusChange = vi.fn();
     render(<RecipeView slug="prompt-basics" onStatusChange={onStatusChange} />);
+
+    // Not called with the initial "idle" on mount -- see RunOutput's own
+    // doc comment for why (only genuine transitions after mount fire it).
     expect(onStatusChange).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Question"), "What is 2+2?");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("running"));
+
+    released?.();
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("done"));
+    expect(onStatusChange.mock.calls.map(([status]) => status)).toEqual(["running", "done"]);
   });
 
   describe("Task 14: RunForm submit is wired to a real run, rendered by RunOutput", () => {

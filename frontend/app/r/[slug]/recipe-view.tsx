@@ -39,13 +39,14 @@ export interface RecipeViewHandle {
 export interface RecipeViewProps {
   slug: string;
   /**
-   * Still unused: `<RunOutput>` (mounted below) owns `useRecipeRun`
-   * internally and doesn't report its status upward — only `start`/`cancel`,
-   * via `RunOutputHandle`. Wiring this through (an `onStatusChange` prop on
-   * `RunOutput` itself, forwarding `useRecipeRun`'s `status`) is `workspace`
-   * cross-module wiring, out of `execution`'s own scope; kept here,
-   * unwired, so `workspace` doesn't need to touch this file's prop surface
-   * later, per the same amendment that added this prop.
+   * `SPEC-workspace.md`'s "Run-status observability" cross-module contract,
+   * now wired for real (owned by `workspace`, per that spec's Task 1):
+   * forwarded straight through to `<RunOutput>` below, which reports
+   * `useRecipeRun`'s own `status` upward via a `useEffect` whenever it
+   * changes (see `RunOutput`'s own doc comment for exactly which
+   * transitions fire it). `workspace` uses this to drive a tab's status dot
+   * and its `completedAt` progress write; no transformation happens here --
+   * this component is a pure pass-through for the callback.
    */
   onStatusChange?: (status: RecipeRunStatus) => void;
   className?: string;
@@ -64,7 +65,7 @@ export interface RecipeViewProps {
  * state affect only the Run action, not the page).
  */
 export const RecipeView = forwardRef<RecipeViewHandle, RecipeViewProps>(function RecipeView(
-  { slug, className },
+  { slug, className, onStatusChange },
   ref
 ) {
   const recipeQuery = useRecipe(slug);
@@ -148,7 +149,7 @@ export const RecipeView = forwardRef<RecipeViewHandle, RecipeViewProps>(function
       )}
 
       <RunForm ref={runFormRef} recipe={recipe} onSubmit={handleRunSubmit} />
-      <RunOutput ref={runOutputRef} slug={recipe.slug} />
+      <RunOutput ref={runOutputRef} slug={recipe.slug} onStatusChange={onStatusChange} />
     </div>
   );
 });

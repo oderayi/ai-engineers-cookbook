@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { Loader2 } from "lucide-react";
 
 import { ArtifactMarkdown } from "@/components/execution/artifact/markdown";
@@ -187,6 +187,24 @@ export interface RunOutputHandle {
 
 export interface RunOutputProps {
   slug: string;
+  /**
+   * The `workspace` cross-module contract (`SPEC-workspace.md`'s "Run-status
+   * observability"): invoked whenever `useRecipeRun`'s own `status` changes,
+   * so `workspace` can drive a tab's status dot and its `completedAt`
+   * progress write without reaching into this component's internal hook.
+   *
+   * Deliberately NOT called with the initial `"idle"` on mount -- only for
+   * genuine transitions afterward (`running`, then `done`/`error`, and back
+   * to `idle` on cancel-and-restart). The spec's own phrasing of the sequence
+   * ("idle → running → done | error, and back to idle on cancel-and-restart")
+   * treats `idle` as either the starting point never itself "arrived at" via
+   * a transition, or a state you return to -- never a state a fresh mount
+   * announces. Practically: a newly opened `workspace` tab is idle by
+   * construction (that's the tab's own default, not something it needs to be
+   * told), so an initial-mount call would only ever be a redundant no-op for
+   * every real consumer -- it's the actual transitions that are informative.
+   */
+  onStatusChange?: (status: RunStatus) => void;
   className?: string;
 }
 
@@ -206,11 +224,23 @@ export interface RunOutputProps {
  * request without the caller needing to remember/re-supply it.
  */
 export const RunOutput = forwardRef<RunOutputHandle, RunOutputProps>(function RunOutput(
-  { slug, className },
+  { slug, className, onStatusChange },
   ref
 ) {
   const { status, events, result, error, start, cancel } = useRecipeRun(slug);
   const lastPayloadRef = useRef<RunPayload | null>(null);
+
+  // Skips the effect's own first run (mount, with `status` still "idle") --
+  // see `RunOutputProps.onStatusChange`'s doc comment for why that call is
+  // deliberately withheld. Every run after the first is a genuine transition.
+  const hasMountedRef = useRef(false);
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
 
   useImperativeHandle(
     ref,

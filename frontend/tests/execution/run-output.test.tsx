@@ -1,13 +1,46 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { createRef } from "react";
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RunOutputView } from "@/components/execution/run-output";
+import { RunOutput, RunOutputView, type RunOutputHandle } from "@/components/execution/run-output";
 import { parseRecipeEvent, type ErrorEvent, type RecipeEvent } from "@/lib/execution/events";
 import { RateLimitPayload } from "@/lib/execution/rate-limit";
 import type { RunFailure } from "@/hooks/use-recipe-run";
+import { postRun } from "@/lib/execution/run-client";
+
+// `<RunOutput>` (unlike `RunOutputView`) owns a real `useRecipeRun`, which
+// calls `postRun` -- mocked the same way `tests/hooks/use-recipe-run.test.tsx`
+// mocks it, so the `onStatusChange` tests below drive genuine status
+// transitions without hitting a real network/backend.
+vi.mock("@/lib/execution/run-client", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/execution/run-client")>("@/lib/execution/run-client");
+  return { ...actual, postRun: vi.fn() };
+});
+
+const mockPostRun = vi.mocked(postRun);
+
+async function* eventsOf(events: RecipeEvent[]) {
+  for (const event of events) yield event;
+}
+
+const STEP: RecipeEvent = { type: "step", id: "s1", name: "Thinking", status: "start", detail: null, ts: 0.1 };
+const RESULT: RecipeEvent = { type: "result", data: { ok: true }, ts: 1 };
+const ERROR: RecipeEvent = {
+  type: "error",
+  error_type: "recipe_error",
+  message: "boom",
+  recoverable: false,
+  ts: 1,
+};
+
+beforeEach(() => {
+  window.localStorage.clear();
+  vi.clearAllMocks();
+});
 
 const FIXTURES_DIR = path.resolve(import.meta.dirname, "fixtures");
 
@@ -227,5 +260,74 @@ describe("RunOutputView", () => {
       <RunOutputView status="done" events={[]} result={null} error={null} onCancel={onCancel} />
     );
     expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("RunOutput's onStatusChange", () => {
+  it("is NOT called with the initial 'idle' status on mount (only genuine transitions are reported)", () => {
+    const onStatusChange = vi.fn();
+    render(<RunOutput slug="echo" onStatusChange={onStatusChange} />);
+    expect(onStatusChange).not.toHaveBeenCalled();
+  });
+
+  it("fires idle -> running -> done on a happy-path run", async () => {
+    mockPostRun.mockReturnValue(eventsOf([STEP, RESULT]));
+    const onStatusChange = vi.fn();
+    const ref = createRef<RunOutputHandle>();
+    render(<RunOutput ref={ref} slug="echo" onStatusChange={onStatusChange} />);
+
+    act(() => {
+      ref.current?.start({ params: {}, config: {} });
+    });
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("done"));
+    // Exactly the two real transitions -- never the initial "idle".
+    expect(onStatusChange.mock.calls.map(([status]) => status)).toEqual(["running", "done"]);
+  });
+
+  it("fires idle -> running -> error on a failed run", async () => {
+    mockPostRun.mockReturnValue(eventsOf([STEP, ERROR]));
+    const onStatusChange = vi.fn();
+    const ref = createRef<RunOutputHandle>();
+    render(<RunOutput ref={ref} slug="echo" onStatusChange={onStatusChange} />);
+
+    act(() => {
+      ref.current?.start({ params: {}, config: {} });
+    });
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("error"));
+    expect(onStatusChange.mock.calls.map(([status]) => status)).toEqual(["running", "error"]);
+  });
+
+  it("fires running -> idle when cancel() aborts an in-flight run", async () => {
+    let released: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      released = resolve;
+    });
+    mockPostRun.mockReturnValue(
+      (async function* () {
+        yield STEP;
+        await gate; // hang until the test releases it, or the abort ends the generator
+        yield RESULT;
+      })()
+    );
+
+    const onStatusChange = vi.fn();
+    const ref = createRef<RunOutputHandle>();
+    render(<RunOutput ref={ref} slug="echo" onStatusChange={onStatusChange} />);
+
+    act(() => {
+      ref.current?.start({ params: {}, config: {} });
+    });
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("running"));
+
+    act(() => {
+      ref.current?.cancel();
+    });
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("idle"));
+    expect(onStatusChange.mock.calls.map(([status]) => status)).toEqual(["running", "idle"]);
+
+    released?.(); // let the generator finish so the test doesn't leak a pending promise
   });
 });
