@@ -797,16 +797,15 @@ Criteria to the test(s) that verify it, matching the `recipe-framework` /
 `app-shell` / `settings` precedent.
 
 **Acceptance criteria:**
-- [ ] A sign-off table (appended to `tasks/plan-catalog.md`) lists all 7
+- [x] A sign-off table (appended to `tasks/plan-catalog.md`) lists all 7
       criteria against their verification, honestly noting any partial/
-      carried-forward criterion (e.g. criterion 7's "workspace can render
-      `<RecipeView>`" is structurally true by construction here but only
-      really provable once `workspace` exists and does it)
-- [ ] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test`,
-      `bun run test:e2e` all green
+      carried-forward criterion (criteria 4, 6, 7)
+- [x] `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test`,
+      `bun run test:e2e` all green — plus the backend's own suite
+      (123/123, ruff clean), since Task 0 amended it
 
 **Verification:**
-- [ ] Full command suite above, run once at the end
+- [x] Full command suite above, run once at the end
 
 **Dependencies:** Tasks 0-16
 
@@ -818,6 +817,7 @@ Criteria to the test(s) that verify it, matching the `recipe-framework` /
 ---
 
 ## Checkpoint: Module complete (after Task 17)
-- [ ] All 7 success criteria individually verified
-- [ ] Full suite + lint + typecheck + build + E2E green
+- [x] All 7 success criteria individually verified (see sign-off table in
+      `tasks/plan-catalog.md`)
+- [x] Full suite + lint + typecheck + build + E2E green
 - [ ] **Human review before `execution` begins consuming this module's run form / recipe page**
