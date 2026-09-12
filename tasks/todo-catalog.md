@@ -270,28 +270,48 @@ and would otherwise have silently gotten a wrong `"text"` mapping.
 4's `buildNavModel()`.
 
 **Acceptance criteria:**
-- [ ] `app/providers.tsx` (or similar): a `"use client"` wrapper owning the
-      `QueryClient` instance (one per request on the server, one per app
-      load on the client — the standard Next.js App Router react-query
-      pattern, not a module-level singleton that would leak across requests)
-- [ ] `app/layout.tsx` becomes `async`, calls `listRecipes()` server-side,
+- [x] `app/providers.tsx`: a `"use client"` wrapper owning the `QueryClient`
+      instance via `useState(() => new QueryClient())` — not a module-level
+      singleton that would leak across requests
+- [x] `app/layout.tsx` becomes `async`, calls `listRecipes()` server-side,
       passes `buildNavModel(recipes)` to `<Shell nav={...}>`
-- [ ] Backend unreachable (network error, non-2xx): falls back to
-      `{ groups: [] }`, never throws into the root layout (an empty sidebar
-      is a valid state; a crashed root layout is not)
-- [ ] `tests/fixtures/nav-tree.ts` (the app-shell placeholder) is deleted —
-      it was always meant to be temporary; anything in it still worth
-      keeping as a *catalog* fixture belongs in Task 2's fixtures instead,
-      not left behind as a second, now-orphaned nav fixture
+- [x] Backend unreachable (network error, non-2xx): falls back to
+      `{ groups: [] }`, never throws into the root layout — logged
+      server-side (`console.error`) rather than swallowed silently
+- [x] **Critical fix beyond the original criteria**: added
+      `export const dynamic = "force-dynamic"` to `app/layout.tsx`. Without
+      it, Next.js statically prerenders the root layout at build time, so
+      the nav fetch runs exactly once during `next build` and gets baked
+      into static HTML forever — reproduced directly (build against a live
+      backend, kill the backend, reload the *same running* `next start`
+      process, nav still showed stale data), then re-verified fixed in both
+      directions with no rebuild between them
+
+**Deviation from the plan, documented at implementation time:**
+`tests/fixtures/nav-tree.ts` is **kept, not deleted** — it still
+legitimately serves `app-shell`'s own `shell`/`sidebar`/`sidebar-nav`
+component tests, which test rendering logic in isolation from the
+data-fetching layer and shouldn't depend on `catalog`'s fixtures. Only its
+one usage in `app/layout.tsx` was replaced with real fetched data.
 
 **Verification:**
-- [ ] `bun run typecheck && bun run lint`
-- [ ] `bun run test` (existing `app-shell` shell/sidebar tests still pass,
-      adjusted for the new data source where they touched the old fixture)
-- [ ] Manual: `bun run dev` against a running backend (`uv run fastapi dev`
-      pointed at `backend/tests/fixtures/recipes`) shows the real demo
-      recipes in the sidebar; stopping the backend and reloading shows an
-      empty-but-not-broken sidebar
+- [x] `bun run typecheck && bun run lint`
+- [x] `bun run test` (270/270 — existing `app-shell` shell/sidebar tests
+      untouched and still pass, since they pass `NavModel` fixtures directly
+      as component props, not through `layout.tsx`)
+- [x] `bun run test:e2e` (12/12, stable across 2 consecutive runs) —
+      `e2e/responsive.spec.ts`'s mobile-drawer test previously hardcoded
+      "Prompt Basics" from the now-unused fixture; rewritten to compare the
+      drawer's links against the desktop rail's (matching what the test's
+      own title claims to check) — currently vacuously true (no backend runs
+      during E2E, no real recipe content exists yet), will catch a real
+      mismatch once Task 16 wires a live backend into the E2E harness
+- [x] Manual: verified via a real `bun run build && bun run start` against
+      an ephemeral `uv run --with 'uvicorn[standard]'` backend serving
+      `backend/tests/fixtures/recipes` (no ASGI server is a permanent
+      backend dependency yet — see Task 0's note) — real demo recipes shown
+      in the sidebar; backend killed mid-session (no rebuild) → sidebar goes
+      empty immediately, no crash, no stale data
 
 **Dependencies:** Tasks 3, 4
 
@@ -306,7 +326,9 @@ and would otherwise have silently gotten a wrong `"text"` mapping.
 ---
 
 ## Checkpoint: Shell now backed by real (or gracefully-empty) data
-- [ ] `bun run dev` renders correctly both against a live backend and with none running
+- [x] Renders correctly both against a live backend and with none running —
+      verified via `bun run build && bun run start` (dynamic rendering, real
+      per-request behavior), not just `bun run dev`
 - [ ] **Human review before the index-page parallel batch**
 
 ---
