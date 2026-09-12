@@ -141,6 +141,30 @@ def test_events_stream_in_order_with_exactly_one_terminal_event() -> None:
     assert events[-1]["data"] == {"message": "hi"}
 
 
+def test_output_limit_breach_is_wired_through_as_terminal_error(tmp_path: Path) -> None:
+    """Doesn't re-derive `recipe-framework`'s own 2000-event cap enforcement
+    (already covered by its `test_executor_run.py`) — only proves THIS
+    endpoint carries that terminal `error_type: output_limit` through
+    correctly, as a real HTTP response.
+    """
+    root = make_recipe(
+        tmp_path,
+        "from skillet.recipe import Params as BaseParams\n\n"
+        "class Params(BaseParams):\n    pass\n\n"
+        "async def run(params, ctx):\n"
+        "    for _ in range(3000):\n"  # exceeds execute()'s default max_events=2000
+        "        await ctx.emit.token('x')\n"
+        "    await ctx.emit.result({})\n",
+    )
+    client = TestClient(create_app(recipes_root=root))
+    resp = client.post("/recipes/x/run", data={"params": "{}", "config": "{}"})
+
+    events = [json.loads(line) for line in iter_sse_data_lines(resp.text)]
+    assert events[-1]["type"] == "error"
+    assert events[-1]["error_type"] == "output_limit"
+    assert sum(e["type"] in ("result", "error") for e in events) == 1
+
+
 def test_first_byte_arrives_well_before_recipe_finishes(tmp_path: Path) -> None:
     """A deliberately-slow fixture recipe proves the response isn't buffered
     whole before any of it reaches the client — over a real socket, since
