@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from skillet.api.recipes import router as recipes_router
 from skillet.api.run import router as run_router
 from skillet.execution.keys import install_redacting_filter
+from skillet.trial_limits.redis_client import UpstashRedis
 
 DEFAULT_RECIPES_ROOT = Path(__file__).resolve().parents[3] / "recipes"
 
@@ -32,6 +33,21 @@ def create_app(recipes_root: Path | None = None) -> FastAPI:
 
     app = FastAPI(title="Skillet")
     app.state.recipes_root = recipes_root or DEFAULT_RECIPES_ROOT
+
+    # `trial_limits`' own state: both left `None` when unconfigured (the
+    # default for a local/self-hosted clone — see
+    # `author_key.any_trial_key_configured()`'s no-op path). A deployment
+    # that funds a trial key but leaves either of these unset fails loudly
+    # inside `gate_trial_run` itself (`TrialLimitsMisconfigured`), not here —
+    # this factory never guesses at which combination is "intentional".
+    redis_url = os.environ.get("UPSTASH_REDIS_REST_URL")
+    redis_token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    app.state.trial_redis = (
+        UpstashRedis(redis_url, redis_token) if redis_url and redis_token else None
+    )
+
+    cookie_secret = os.environ.get("SKILLET_TRIAL_COOKIE_SECRET")
+    app.state.cookie_secret = cookie_secret.encode() if cookie_secret else None
 
     origins_env = os.environ.get("SKILLET_CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
     origins = [o.strip() for o in origins_env.split(",") if o.strip()]
