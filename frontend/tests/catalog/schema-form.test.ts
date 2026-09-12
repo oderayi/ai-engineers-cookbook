@@ -377,6 +377,25 @@ describe("compileForm — validator", () => {
     expect(validator.safeParse({ question: 42 }).success).toBe(false);
   });
 
+  it("rejects an empty string for a required text field (real bug, found via a real browser E2E test)", () => {
+    // A native <input>'s DOM value is always a string ("" when untouched,
+    // never undefined) -- a bare z.string() with no .min(1) accepts "" as
+    // "present", so a required field's Run button would incorrectly enable
+    // the instant the form mounts, before any real input. jsdom-based unit
+    // tests using `waitFor` never caught this; frontend/e2e/
+    // run-form-validation.spec.ts did, against a real Chromium.
+    const { validator } = compileForm(plainRequiredString);
+
+    expect(validator.safeParse({ question: "" }).success).toBe(false);
+    expect(validator.safeParse({ question: "a real answer" }).success).toBe(true);
+  });
+
+  it("still accepts an empty string for an OPTIONAL text field (empty == unset, not invalid)", () => {
+    const { validator } = compileForm(optionalStringWithDefaultNull);
+
+    expect(validator.safeParse({ note: "" }).success).toBe(true);
+  });
+
   it("applies min/max bounds for a slider (int) field and rejects out-of-range values", () => {
     const { validator } = compileForm(enumAndIntWithMinMax);
     const valid = { tokenizer: "gpt-4", max_tokens: 2048 };

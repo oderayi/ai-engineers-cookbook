@@ -227,12 +227,28 @@ function applyControlSpecifics(field: FieldDescriptor, schema: JsonSchemaPropert
  * matching Pydantic's own `Optional[X] = None`, which accepts both a
  * missing key and an explicit `null` in the JSON body.
  */
+/**
+ * A bare `z.string()` accepts an empty string as valid — but a native
+ * `<input>`/`<textarea>`'s own DOM value is *always* a string, `""` when
+ * untouched, never `undefined`/absent. That means a required text field
+ * would validate as "present" the instant the form mounts, before the user
+ * types anything at all — a real, reproduced-in-a-real-browser bug (found
+ * via `frontend/e2e/run-form-validation.spec.ts`; jsdom-based unit tests,
+ * relying on `waitFor` to converge, never caught it). `.min(1)` closes this
+ * for a `required` field; an optional one still accepts `""` (consistent
+ * with this codebase's broader "empty string == unset" convention, e.g.
+ * `lib/settings/resolve.ts`).
+ */
+function requiredNonEmpty(base: z.ZodString, required: boolean): z.ZodTypeAny {
+  return required ? base.min(1, "This field is required.") : base;
+}
+
 function buildFieldValidator(field: FieldDescriptor, schema: JsonSchemaProperty): z.ZodTypeAny {
   let base: z.ZodTypeAny;
 
   switch (field.control) {
     case "text":
-      base = z.string();
+      base = requiredNonEmpty(z.string(), field.required);
       break;
     case "textarea":
       // A bare string field can also resolve to "textarea" in principle
@@ -248,7 +264,15 @@ function buildFieldValidator(field: FieldDescriptor, schema: JsonSchemaProperty)
       // not an actual array — so this transforms the string into one before
       // the rest of the pipeline (react-hook-form's values, the eventual
       // `params` handed to `execution`) ever sees it. Blank lines are
-      // dropped; each line is trimmed.
+      // dropped; each line is trimmed. (The empty-string gap described above
+      // doesn't apply to this branch — an empty array is still "present"
+      // the same way an empty string is for a plain text field, so a
+      // required list[str] field left untouched has the same gap; left as
+      // `z.array(z.string())` with no `.min(1)`, consistent with this
+      // module's existing posture that `required` means "present", not
+      // "non-empty", for a collection — unlike a single scalar field, where
+      // "present but empty" and "absent" collapse to the same native input
+      // state and are indistinguishable to the user.)
       base =
         schema.type === "array"
           ? z
@@ -259,11 +283,14 @@ function buildFieldValidator(field: FieldDescriptor, schema: JsonSchemaProperty)
                   .map((line) => line.trim())
                   .filter((line) => line.length > 0)
               )
-          : z.string();
+          : requiredNonEmpty(z.string(), field.required);
       break;
     case "select": {
       const options = field.options ?? [];
-      base = options.length > 0 ? z.enum(options as [string, ...string[]]) : z.string();
+      base =
+        options.length > 0
+          ? z.enum(options as [string, ...string[]])
+          : requiredNonEmpty(z.string(), field.required);
       break;
     }
     case "switch":
