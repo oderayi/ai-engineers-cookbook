@@ -633,24 +633,41 @@ a real run, `<RunOutput>` renders it, mounted below the form in
 `recipe-view.tsx`.
 
 **Acceptance criteria:**
-- [ ] `app/r/[slug]/recipe-view.tsx` mounts `<RunOutput slug={slug} />` (or
+- [x] `app/r/[slug]/recipe-view.tsx` mounts `<RunOutput slug={slug} />` (or
       your close equivalent) below `<RunForm>`
-- [ ] `RunForm`'s `onSubmit` payload (`{ params, recipeSlug }`) is wired to
+- [x] `RunForm`'s `onSubmit` payload (`{ params, recipeSlug }`) is wired to
       `useRecipeRun(slug).start(...)`, replacing the `// TODO(execution)`
-      no-op left there since `catalog`'s Task 14
-- [ ] `RecipeOverrides`' resolved config (already computed inside
+      no-op left there since `catalog`'s Task 14 — via `RunOutputHandle`
+      (`RunOutput` owns `useRecipeRun` itself; `recipe-view.tsx` calls
+      `runOutputRef.current.start(...)`), not a direct hook call from
+      `recipe-view.tsx` — keeps `useRecipeRun` encapsulated inside
+      `RunOutput`, consistent with Task 13's own design
+- [x] `RecipeOverrides`' resolved config (already computed inside
       `RunForm` via `useResolvedConfig`) is what actually gets sent as the
-      run's `config` — confirm this end-to-end, not just that a `config`
-      object of *some* shape is sent
-- [ ] Browsing (description/examples/source) still renders and works
+      run's `config` — confirmed end-to-end (not just object-shape) with a
+      real localStorage-seeded override in `run-form.test.tsx`. **Real gap
+      found**: `run-form.tsx` did not actually call `useResolvedConfig` at
+      all before this task — only rendered `<RecipeOverrides>` for its UI;
+      `onSubmit` never sent `config`. Added the call, plus splitting a
+      file-control field's real `File[]` value out of `params` into a new
+      `files` field (a browser `File` can't survive `JSON.stringify`, so it
+      never belonged in `params` to begin with) — `RunFormSubmitPayload`
+      grew from `{params, recipeSlug}` to `{params, recipeSlug, config,
+      files}`
+- [x] Browsing (description/examples/source) still renders and works
       exactly as `catalog`'s own tests already prove — this task must not
-      regress any of `catalog`'s existing test suite
+      regress any of `catalog`'s existing test suite (151/151 catalog
+      tests pass unchanged in behavior, 2 pre-existing assertions updated
+      to match the real, now-populated `config`/`files` fields)
 
 **Verification:**
-- [ ] `bun run typecheck && bun run lint`
-- [ ] `bun run test` — `catalog`'s existing `recipe-view.test.tsx` and
-      `run-form.test.tsx` still pass, plus new assertions for the wiring
-- [ ] `bun run build` succeeds
+- [x] `bun run typecheck && bun run lint` clean
+- [x] `bun run test` — 548/548 passed, including updated
+      `recipe-view.test.tsx`/`run-form.test.tsx` assertions for the real
+      wiring (submit starts a real run and streams output; `cancelRun()`
+      now genuinely cancels instead of no-op'ing; the real resolved config
+      reaches `postRun`)
+- [x] `bun run build` succeeds
 
 **Dependencies:** Task 13
 
