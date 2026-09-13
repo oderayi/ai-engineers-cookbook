@@ -8,7 +8,8 @@
 # type. Windows needs WSL or Git Bash — the target audience already needs a
 # real terminal per the product intent's audience assumption.
 
-.PHONY: dev dev-backend dev-frontend docker test validate new-recipe lint
+.PHONY: dev dev-backend dev-frontend docker test test-backend test-frontend \
+	validate new-recipe lint lint-backend lint-frontend
 
 dev:
 	@cd backend && uv sync --quiet
@@ -36,8 +37,18 @@ dev-frontend:
 docker:
 	docker compose up --build
 
-test:
+# `test`/`lint` each compose their two per-service halves -- split out so
+# CI (`.github/workflows/ci.yml`) can run only the half whose toolchain that
+# job actually installed, while a contributor still gets the exact same
+# targets described in the spec's own Commands section by running the
+# combined ones locally (Confirmed Decision 7: CI runs the same commands a
+# contributor runs locally, never a CI-only script).
+test: test-backend test-frontend
+
+test-backend:
 	@cd backend && uv run pytest
+
+test-frontend:
 	@cd frontend && bun run test
 
 validate:
@@ -47,6 +58,10 @@ validate:
 new-recipe:
 	@cd backend && uv run skillet recipes new $(RECIPE)
 
-lint:
+lint: lint-backend lint-frontend
+
+lint-backend:
 	@cd backend && uv run ruff check
+
+lint-frontend:
 	@cd frontend && bun run lint

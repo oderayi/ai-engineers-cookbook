@@ -131,22 +131,29 @@ table), each with a one-line description and a safe placeholder/default.
 locally.
 
 **Acceptance criteria:**
-- [ ] Single workflow, triggers on push/PR
-- [ ] `backend` job: `uv sync`, then `make test`/`make lint`/`make validate`'s backend halves (or the full `make` targets, if they're not slow when the frontend half is unavailable in that job — decide and document)
-- [ ] `frontend` job: `bun install`, then the frontend halves
-- [ ] A doc-comment in `ci.yml` explicitly references the Makefile targets it calls, so "what CI runs" and "what's documented" can't drift silently
-- [ ] Ubuntu latest, single Node/Python version (already pinned elsewhere) — no matrix
+- [x] Single workflow, triggers on push/PR
+- [x] `backend` job: `astral-sh/setup-uv`, then `make test-backend`/`make lint-backend`/`make validate` (split out as new Makefile targets — see below)
+- [x] `frontend` job: `bun install --frozen-lockfile`, then `make test-frontend`/`make lint-frontend`/`bun run typecheck`
+- [x] A doc-comment in `ci.yml` explicitly references the Makefile targets it calls, so "what CI runs" and "what's documented" can't drift silently
+- [x] Ubuntu latest, single Node/Python version (resolved from each lockfile, nothing extra to pin) — no matrix
+
+**Design decision:** the approved spec's own `make test`/`make lint` compose BOTH services' halves in one target — unusable in a split-by-toolchain CI job (the backend job has no `bun`, and vice versa). Split each into `test-backend`/`test-frontend` and `lint-backend`/`lint-frontend`, with the original combined name now composing both — a contributor still gets exactly the commands the spec documents, and CI gets the granularity it needs, per Confirmed Decision 7 (same commands, not a CI-only script).
+
+**Disclosed addition beyond the approved spec:** `bun run typecheck` — the spec's own Commands table has no typecheck target at all, but every prior module's own Definition of Done treated it as a required gate; omitting it from CI would be a real, silent regression from that bar for the one workflow meant to protect all future contributions.
+
+**Real gap found and fixed while researching this task:** all three third-party Action versions I initially reached for from training-data memory (`actions/checkout@v4`, `astral-sh/setup-uv@v3`) were stale — `astral-sh/setup-uv` is at v10, `actions/checkout` at v7 (`oven-sh/setup-bun@v2` was already current). Verified each via a live fetch of the action's own README rather than trusting memory, per this session's established practice for anything with a real, checkable current state.
 
 **Verification:**
-- [ ] YAML syntax validated (`yamllint` or a Python `yaml.safe_load`, since no real GitHub Actions runner is available in this environment — disclosed)
-- [ ] Every command the workflow invokes is manually run locally and passes
+- [x] YAML syntax validated (`python3 -c "import yaml; yaml.safe_load(...)"`, since no real GitHub Actions runner is available in this environment — disclosed)
+- [x] Every command the workflow invokes run locally in sequence, exactly as the job specifies: backend (`make test-backend && make lint-backend && make validate`) and frontend (`bun install --frozen-lockfile`, `make test-frontend && make lint-frontend`, `bun run typecheck`) — all pass
 
 **Dependencies:** Task 1 (Makefile targets), Task 3 (Docker not required for CI itself, but env vars from Task 2 are)
 
 **Files likely touched:**
 - `.github/workflows/ci.yml` (new)
+- `Makefile` (split `test`/`lint` into per-service targets)
 
-**Estimated scope:** Small: 1 file
+**Estimated scope:** Small: 1 file (grew to 2 for the Makefile split)
 
 ---
 

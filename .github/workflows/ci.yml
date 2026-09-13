@@ -1,0 +1,50 @@
+# CI runs the exact same commands documented for local use (SPEC-
+# distribution.md Confirmed Decision 7) -- a contributor reproduces a CI
+# failure by running these same `make` targets locally, nothing here is a
+# CI-only script. Single OS/Python/Node version, no matrix (per the spec's
+# own resolved Open Question 2) -- versions come from backend/uv.lock and
+# frontend/bun.lock, the same lockfiles `make dev`/`make docker` already
+# resolve against, so there is nothing extra to pin here.
+#
+# Two jobs, split by toolchain, each installing only what it needs:
+#   backend:  make test-backend, make lint-backend, make validate
+#             (`uv run pytest` already runs every backend test, including
+#             recipe-framework's own 1-to-1 source-hash test
+#             (tests/recipe/test_source*.py) -- no separate invocation
+#             needed for that cross-cutting check)
+#   frontend: make test-frontend, make lint-frontend, plus `bun run
+#             typecheck` (not in the spec's own Commands table, which lists
+#             no typecheck target at all -- added here as a disclosed
+#             enhancement, since every prior module's own Definition of
+#             Done treats typechecking as a required gate and skipping it
+#             in CI would be a real, silent regression from that bar)
+#
+# E2E (Playwright) is deliberately NOT run here -- it needs both dev
+# servers up together and a browser install, a heavier job than this
+# workflow's own scope (per-module unit/lint/validate); it stays a local
+# and on-demand check, per how every prior module already treats it.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: make test-backend
+      - run: make lint-backend
+      - run: make validate
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: cd frontend && bun install --frozen-lockfile
+      - run: make test-frontend
+      - run: make lint-frontend
+      - run: cd frontend && bun run typecheck
