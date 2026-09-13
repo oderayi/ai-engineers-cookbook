@@ -2,7 +2,11 @@ import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // `distribution`'s Docker image copies only this standalone output (plus
+  // `public/` and `.next/static/`) into its final stage, not the full
+  // `node_modules` tree — see `frontend/Dockerfile`. Harmless for `next dev`,
+  // which ignores `output` entirely.
+  output: "standalone",
 };
 
 // @serwist/next's InjectManifest plugin is webpack-based, so wrapping the

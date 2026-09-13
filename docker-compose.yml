@@ -1,0 +1,34 @@
+# `make docker` (`docker compose up --build`) — no local Python/Node needed
+# at all beyond Docker itself. Produces the same app, at the same local URLs,
+# as `make dev` (SPEC-distribution.md Confirmed Decision 1).
+#
+# `env_file`'s plain string form hard-errors if the file doesn't exist
+# (verified empirically: `docker compose config` with a bare `env_file:
+# backend/.env` and no such file fails with "env file ... not found", it
+# does NOT silently skip it) — the `path:`/`required: false` form below is
+# what actually makes a completely clean checkout (neither `.env` nor
+# `.env.local` copied yet) still boot successfully in BYOK-only mode, since
+# every var either file could set is optional (see both `.env.example`'s
+# own comments).
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: backend/.env
+        required: false
+    ports: ["8000:8000"]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked in at build time (Next.js inlines NEXT_PUBLIC_* vars into
+        # the bundle, not read at container start) — the frontend container
+        # reaches the backend container by its Compose service name, not
+        # localhost.
+        NEXT_PUBLIC_BACKEND_URL: http://backend:8000
+    env_file:
+      - path: frontend/.env.local
+        required: false
+    ports: ["3000:3000"]
+    depends_on: [backend]

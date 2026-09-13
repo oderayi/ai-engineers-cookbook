@@ -16,6 +16,19 @@ from skillet.api.run import router as run_router
 from skillet.execution.keys import install_redacting_filter
 from skillet.trial_limits.redis_client import UpstashRedis
 
+# `parents[3]` walks up from this file's own location to the repo's
+# `backend/` directory and back down into `recipes/` -- correct ONLY for an
+# editable/source-tree install, where `__file__` is really
+# `backend/src/skillet/api/app.py` (true for `uv run` in local dev, since
+# `uv sync` installs this project editable by default). A real, non-editable
+# install (any `pip install`-style deploy -- confirmed the hard way building
+# `distribution`'s Docker image with `uv sync --no-editable`) puts this same
+# file at `.venv/lib/python3.*/site-packages/skillet/api/app.py` instead,
+# where the identical arithmetic lands on a nonexistent path inside the venv
+# itself. `SKILLET_RECIPES_ROOT` lets a real deployment say so explicitly
+# rather than depend on install-mode-dependent path arithmetic at all --
+# `backend/Dockerfile` sets it; local dev leaves it unset and keeps relying
+# on the (verified-correct, for that context) computation below.
 DEFAULT_RECIPES_ROOT = Path(__file__).resolve().parents[3] / "recipes"
 
 # `catalog` is the first module to call this API from a browser origin
@@ -32,7 +45,12 @@ def create_app(recipes_root: Path | None = None) -> FastAPI:
     install_redacting_filter()
 
     app = FastAPI(title="Skillet")
-    app.state.recipes_root = recipes_root or DEFAULT_RECIPES_ROOT
+    env_recipes_root = os.environ.get("SKILLET_RECIPES_ROOT")
+    app.state.recipes_root = (
+        recipes_root
+        or (Path(env_recipes_root) if env_recipes_root else None)
+        or DEFAULT_RECIPES_ROOT
+    )
 
     # `trial_limits`' own state: both left `None` when unconfigured (the
     # default for a local/self-hosted clone — see

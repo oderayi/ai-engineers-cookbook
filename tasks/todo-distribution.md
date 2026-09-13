@@ -12,18 +12,24 @@ test`, `make validate`, `make new-recipe`, `make lint`), the MIT license
 text, and both manifests declaring it.
 
 **Acceptance criteria:**
-- [ ] `Makefile` at repo root with targets: `dev`, `dev-backend`,
+- [x] `Makefile` at repo root with targets: `dev`, `dev-backend`,
       `dev-frontend`, `docker`, `test`, `validate`, `new-recipe`, `lint`
       (per spec's Code Style sample, adapted to real paths/commands)
-- [ ] `LICENSE` at repo root: MIT text, copyright "Steven Oderayi"
-- [ ] `backend/pyproject.toml` already declares `license = { text = "MIT" }` — confirm (already true; no change needed if so)
-- [ ] `frontend/package.json` declares `"license": "MIT"`
+- [x] `LICENSE` at repo root: MIT text, copyright "Steven Oderayi"
+- [x] `backend/pyproject.toml` already declares `license = { text = "MIT" }` — confirmed, no change needed
+- [x] `frontend/package.json` declares `"license": "MIT"`
 
 **Verification:**
-- [ ] `make dev` boots both dev servers (manual Ctrl-C test)
-- [ ] `make test` runs `uv run pytest && bun run test` and both pass
-- [ ] `make lint` runs `uv run ruff check && bun run lint` and both pass
-- [ ] `make validate` runs `uv run skillet recipes validate` and passes
+- [x] `make dev` boots both dev servers (real boot test: backend :8000 and frontend :3000 both 200, then torn down)
+- [x] `make test` runs `uv run pytest && bun run test` and both pass (265 + 655)
+- [x] `make lint` runs `uv run ruff check && bun run lint` and both pass
+- [x] `make validate` runs `uv run skillet recipes validate` and passes
+
+**Real gaps found and fixed (not originally scoped, but required for `make dev`/`make validate` to work at all):**
+- No permanent ASGI server dependency existed (`uvicorn` was dev-group-only, and `scripts/e2e_recipes_server.py`'s own doc comment explicitly flagged this as "distribution's job"). Promoted `uvicorn[standard]` to a real `[project.dependencies]` entry and added the real production entrypoint (`uvicorn skillet.api.app:app`, already had a module-level `app = create_app()` to target).
+- `backend/recipes/` (`DEFAULT_RECIPES_ROOT`) didn't exist in a clean checkout — added it (with a short README) as a tracked, empty directory.
+- `frontend/.gitignore`'s Next.js-default `.env*` pattern had no exception for `.env.local.example` (unlike the root `.gitignore`'s `!*.env.example`) — would have silently prevented the new file from ever being committed. Fixed.
+- Chose "commented out by default" over `VAR=` (empty) in both `.env.example` files after verifying empirically that an empty-but-present value is NOT treated the same as absent by every `os.environ.get(KEY, default)` call site (e.g. would have silently zeroed out CORS origins).
 
 **Dependencies:** None
 
@@ -31,8 +37,12 @@ text, and both manifests declaring it.
 - `Makefile` (new)
 - `LICENSE` (new)
 - `frontend/package.json` (add `license` field if missing)
+- `backend/pyproject.toml`, `backend/uv.lock` (uvicorn[standard] promotion)
+- `backend/scripts/e2e_recipes_server.py`, `frontend/playwright.config.ts` (simplified now-redundant `--with` invocation)
+- `backend/recipes/README.md` (new)
+- `frontend/.gitignore`
 
-**Estimated scope:** Small: 1-3 files
+**Estimated scope:** Small: 1-3 files (grew to ~8 once the real gaps above surfaced — documented here rather than silently expanding scope)
 
 ---
 
@@ -43,13 +53,13 @@ covering every real env var found in the codebase (see plan's inventory
 table), each with a one-line description and a safe placeholder/default.
 
 **Acceptance criteria:**
-- [ ] `backend/.env.example` lists all 7 backend vars from the inventory, each with a comment describing it, whether it's required, and its default (if any)
-- [ ] `frontend/.env.local.example` lists `NEXT_PUBLIC_BACKEND_URL`
-- [ ] No real secrets — placeholders only (e.g. `sk-...` or empty)
-- [ ] `.gitignore` already excludes real `.env`/`.env.local` while allowing `*.env.example` (confirmed already true)
+- [x] `backend/.env.example` lists all 7 backend vars from the inventory, each with a comment describing it, whether it's required, and its default (if any)
+- [x] `frontend/.env.local.example` lists `NEXT_PUBLIC_BACKEND_URL`
+- [x] No real secrets — placeholders only (e.g. `sk-...`), and commented out by default
+- [x] `.gitignore` at root already excluded real `.env`/`.env.local` while allowing `*.env.example`; `frontend/.gitignore` needed its own matching fix (see Task 1's notes above)
 
 **Verification:**
-- [ ] `cp backend/.env.example backend/.env` (no `SKILLET_TRIAL_*` filled in) then a manual run confirms BYOK-only mode (existing `trial-limits` test suite already covers the code path; this step just confirms the example file's defaults actually produce it)
+- [x] Real `make dev` boot (which auto-copies both `.env.example` files) confirmed BYOK-only mode: catalog loads empty with zero recipes, CORS default correctly applied — no `SKILLET_TRIAL_*` uncommented anywhere
 
 **Dependencies:** None
 
@@ -62,8 +72,8 @@ table), each with a one-line description and a safe placeholder/default.
 ---
 
 ## Checkpoint: Foundation (after Tasks 1-2)
-- [ ] `make dev` boots both services against the real `.env.example`-documented vars
-- [ ] `make test`, `make lint`, `make validate` all pass
+- [x] `make dev` boots both services against the real `.env.example`-documented vars
+- [x] `make test`, `make lint`, `make validate` all pass
 
 ---
 
@@ -76,15 +86,22 @@ table), each with a one-line description and a safe placeholder/default.
 `docker-compose.yml` wiring both, `make docker` target.
 
 **Acceptance criteria:**
-- [ ] `backend/Dockerfile`: multi-stage, final stage has synced venv + `recipes/`, no dev dependencies
-- [ ] `frontend/Dockerfile`: multi-stage (deps → build → run), requires `next.config.ts`'s `output: "standalone"` (add if not already set)
-- [ ] `docker-compose.yml` at repo root per spec's Code Style sample (backend on 8000, frontend on 3000, `NEXT_PUBLIC_BACKEND_URL` pointing at the `backend` service name)
-- [ ] `make docker` target added (already stubbed in Task 1's Makefile — verify wired to `docker compose up --build`)
+- [x] `backend/Dockerfile`: multi-stage, final stage has synced venv + `recipes/`, no dev dependencies
+- [x] `frontend/Dockerfile`: multi-stage (deps → build → run), requires `next.config.ts`'s `output: "standalone"` (added)
+- [x] `docker-compose.yml` at repo root per spec's Code Style sample (backend on 8000, frontend on 3000, `NEXT_PUBLIC_BACKEND_URL` pointing at the `backend` service name)
+- [x] `make docker` target added (already stubbed in Task 1's Makefile — confirmed wired to `docker compose up --build`)
 
-**Verification:**
-- [ ] `docker build ./backend` succeeds
-- [ ] `docker build ./frontend` succeeds
-- [ ] `docker compose up --build` (if a Docker daemon is available in this environment — disclose if not) produces `200` from both `http://localhost:8000/recipes` and `http://localhost:3000/`
+**Verification — Docker daemon WAS available in this environment (started it; not assumed):**
+- [x] `docker build ./backend` succeeds
+- [x] `docker build ./frontend` succeeds
+- [x] `docker compose up --build` produces `200` from both `http://localhost:8000/recipes` and `http://localhost:3000/`, with the frontend container genuinely reaching the backend container over the Compose network (confirmed: no `RecipeApiError`/connection-refused in frontend logs, unlike an isolated single-container probe run)
+
+**Real bugs found and fixed (each confirmed empirically, not guessed):**
+- `uv sync` installs the project **editable** by default (`.pth` pointing at `/app/src`) — the final Docker stage only copies `.venv/`, so the app would have failed to import at runtime. Fixed with `--no-editable` (confirmed: `site-packages/skillet` became a real copy, not a `.pth` file).
+- `httpx` — a genuine runtime dependency of `trial_limits/redis_client.py` (a real `httpx.AsyncClient` for Upstash's REST API) — was declared only in the dev dependency group, invisible until this module's `--no-dev` build: `ModuleNotFoundError: No module named 'httpx'`. Promoted to `[project.dependencies]`.
+- `DEFAULT_RECIPES_ROOT`'s `Path(__file__).resolve().parents[3]` arithmetic assumes an editable/source-tree install (`backend/src/skillet/api/app.py`); once truly installed (`site-packages/skillet/api/app.py`), the same arithmetic resolves to a nonexistent path inside the venv. This isn't Docker-specific — it would bite ANY real non-editable install. Added `SKILLET_RECIPES_ROOT` as an explicit override (set by the Dockerfile), leaving local dev's editable-context default untouched and verified-correct.
+- `docker-compose.yml`'s plain `env_file: backend/.env` hard-errors (`docker compose config`) when the file doesn't exist — verified before shipping it, since a clean checkout has neither `.env` file yet. Fixed with the `path:`/`required: false` extended form.
+- Disclosed, not fixed (Next.js's own advisory, not a failure): adding `output: "standalone"` makes Next.js warn that `next start` (still used by `frontend/package.json`'s `start` script and Playwright's E2E `webServer`) isn't officially supported with that output mode — it still fully works today (confirmed: E2E suite re-run green after the config change), so left as-is rather than restructuring already-signed-off `execution`/`app-shell` E2E infrastructure for a currently-cosmetic warning. The Docker image itself correctly uses the officially recommended `node`/`bun run server.js` invocation instead.
 
 **Dependencies:** Task 1 (Makefile), Task 2 (env var names referenced in compose)
 
@@ -92,14 +109,16 @@ table), each with a one-line description and a safe placeholder/default.
 - `backend/Dockerfile` (new)
 - `frontend/Dockerfile` (new)
 - `docker-compose.yml` (new)
-- `frontend/next.config.ts` (add `output: "standalone"` if missing)
+- `frontend/next.config.ts` (added `output: "standalone"`)
+- `backend/pyproject.toml`, `backend/uv.lock` (httpx promoted to a real dependency)
+- `backend/src/skillet/api/app.py` (`SKILLET_RECIPES_ROOT` override)
 
-**Estimated scope:** Medium: 4 files
+**Estimated scope:** Medium: 4 files (grew to ~7 once the real bugs above surfaced)
 
 ---
 
 ## Checkpoint: Docker parity (after Task 3)
-- [ ] `docker compose up --build` (or, if unavailable, `docker build` on both images) succeeds
+- [x] `docker compose up --build` succeeds, verified end-to-end (not just "images build")
 
 ---
 
