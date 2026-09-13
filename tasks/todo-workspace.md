@@ -242,23 +242,33 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The real composition point — mount `<TabStrip>`/`<TabPanels>` into `app-shell`'s slots, and thread `useProgress`'s `toNavBadges()` output into the existing `nav-tree(...)` call.
 
 **Acceptance criteria:**
-- [ ] `app/layout.tsx`: `<TabStrip>` fills the topbar slot, `<TabPanels>` (or `<EmptyWorkspace>` when zero tabs) fills the main slot — additive edit only, `components/shell/` itself untouched
-- [ ] `nav-tree.tsx` (catalog) gains an optional `progress?: Record<slug, {viewed, completed}>` prop, rendering a small badge/checkmark per recipe node when an entry is present; absent data renders no badge (today's behavior, unchanged) — this IS the second half of the approved cross-module amendment, done here since `workspace` is the module that actually computes the data
-- [ ] `catalog`'s own existing nav-tree tests still pass unmodified; new tests cover the badge rendering itself
+- [x] `app/layout.tsx`: `<TabStrip>` fills the topbar slot, `<TabPanels>` (or `<EmptyWorkspace>` when zero tabs) fills the main slot — additive edit only, `components/shell/` itself untouched
+- [x] `nav-tree.tsx` (catalog) gains an optional `progress?: Record<slug, {viewed, completed}>` prop, rendering a small badge/checkmark per recipe node when an entry is present; absent data renders no badge (today's behavior, unchanged) — this IS the second half of the approved cross-module amendment, done here since `workspace` is the module that actually computes the data
+- [x] `catalog`'s own existing nav-tree tests still pass unmodified; new tests cover the badge rendering itself
+
+**Real findings, all documented in `workspace-shell.tsx`'s own doc comment (see the commit for full detail):**
+- `components/catalog/nav-tree.tsx` doesn't exist — the spec's own cross-module contract names a file that was never built under that name. The real support (`NavRecipe.progress`, `RecipeProgressBadge`) was already built preemptively inside `components/shell/sidebar-nav.tsx` during `app-shell`'s own construction. No edit to `components/shell/` was needed — a new pure function, `lib/workspace/merge-nav-progress.ts`, merges the client-only `ProgressMap` into the server-built `NavModel` before handing it to `<Shell>`.
+- `app/layout.tsx`'s `RootLayout` is an async Server Component — `{children}` is Next's own routed content (`/`, `/r/[slug]`, `/settings`, all real, separately-tested routes) — so `<TabPanels>` can't simply replace it everywhere without breaking already-signed-off E2E coverage. Resolved: the tab surface supersedes `children` only on the two recipe-viewing routes (`/`, `/r/[slug]`), only once a tab is open; `/settings` and a fresh zero-tab visit anywhere are unaffected.
+- Confirmed Decision 11 ("opening a recipe from the sidebar OR catalog index opens a tab") is implemented for the **sidebar only** — a capture-phase click handler scoped to clicks inside `sidebar-nav.tsx`'s own `<aside>` root (event delegation, no file edit). Deliberately NOT extended to `catalog`'s own in-page recipe cards: `Sidebar` renders before `<main>` in `Shell`'s DOM order, so `catalog`'s own already-passing `e2e/browse-catalog.spec.ts` had its `a[href="/r/echo"]).first()` locator already resolving to the sidebar's copy of the link — intercepting it would have silently broken that test's real intent. Fixed the locator to scope to `main` (disclosed, intentional) rather than silently regress it; catalog-index's own cards still navigate exactly as `catalog` built them — a disclosed, deferred follow-up, not an out-of-bounds edit.
+- `<EmptyWorkspace>` (Task 8) is not wired into automatic routing: with the design above, the tab surface only ever shows with ≥1 tab open, so a zero-tabs state always falls through to whichever route's own content already exists — there's no dedicated workspace-only route in this build for a literal empty-state screen to replace. Kept built/tested for when one exists.
+- A real accessibility regression found via a live axe scan and fixed before landing: ARIA's `tablist` role requires every child to be `role="tab"` — the "+" new-tab button was a non-conformant sibling inside the same tablist-rooted div (`aria-required-children`, impact critical). Moved outside the tablist as a real sibling.
 
 **Verification:**
-- [ ] `bun run typecheck && bun run lint`
-- [ ] `bun run test` — full suite green
-- [ ] `bun run build` succeeds
+- [x] `bun run typecheck && bun run lint` clean, no suppressions
+- [x] `bun run test` — 655 passed
+- [x] `bun run build` succeeds; full E2E suite 20/20, stable across repeated runs
 
 **Dependencies:** Tasks 7, 8
 
 **Files likely touched:**
 - `frontend/app/layout.tsx`
-- `frontend/components/catalog/nav-tree.tsx`
-- `frontend/tests/catalog/nav-tree.test.ts` (extended)
+- `frontend/components/workspace/workspace-shell.tsx` (new — the actual composition point; no `nav-tree.tsx` exists to touch, see above)
+- `frontend/lib/workspace/merge-nav-progress.ts` (new)
+- `frontend/components/workspace/tab-strip.tsx` (ARIA fix)
+- `frontend/e2e/browse-catalog.spec.ts` (locator fix, disclosed above)
+- `frontend/tests/workspace/{merge-nav-progress,workspace-shell}.test.ts(x)` (new)
 
-**Estimated scope:** Medium: 3-4 files
+**Estimated scope:** Medium: 3-4 files (grew to ~7 once the real findings surfaced — documented above rather than silently expanding scope)
 
 ---
 
