@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { emptyWorkspace } from "@/lib/workspace/defaults";
@@ -47,14 +47,42 @@ const INITIAL_TABS_STATE: TabsState = { tabs: [], activeTabId: null };
  * `useReducer` starts at `INITIAL_TABS_STATE` (`{ tabs: [], activeTabId: null }`)
  * on every render — server and client alike — so the very first paint never
  * depends on `localStorage` and can't hydration-mismatch. A mount-only effect
- * then reads whatever `useLocalStorage` already resolved (its `getSnapshot`
- * is synchronous on the client, so by the time this effect runs post-mount
- * the real stored value — parsed and `migrate()`-d into a `WorkspaceV1` — is
- * already available, not still the SSR `fallback`) and dispatches a single
- * `RESTORE` action with its `{ tabs, activeTabId }` slice. A ref guards this
- * to fire exactly once per mount, regardless of how many times the
- * `useLocalStorage` value reference changes afterward (e.g. a cross-tab
- * `storage` event).
+ * (empty dependency array — see "Why a direct read, not `workspace`" below)
+ * then reads `window.localStorage` directly, once, and dispatches a single
+ * `RESTORE` action with the parsed `{ tabs, activeTabId }` slice (or does
+ * nothing if there's genuinely nothing stored — the reducer's own initial
+ * state is already correct for a fresh visitor).
+ *
+ * ### Why a direct read, not the reactive `workspace` value — a real bug found the hard way
+ *
+ * An earlier version of this effect watched `useLocalStorage`'s own reactive
+ * `workspace` value (gated on `workspace !== fallback`, to survive
+ * `getServerSnapshot` returning the SSR `fallback` for the client's first
+ * hydration-matching render too — `useSyncExternalStore`'s documented
+ * behavior). That fixed the SSR case, but it re-opened a worse, genuinely
+ * reproducible race, caught by `tests/workspace/workspace-shell.test.tsx`:
+ * `workspace-shell.tsx`'s `openTab` calls `tabActions.openTab(slug)`
+ * (updates this hook's reducer only, synchronously) immediately followed by
+ * `progressActions.markViewed(slug)` — a call into `use-progress.ts`'s
+ * OWN, independent `useLocalStorage(STORAGE_KEY, ...)` subscription (same
+ * key, separate cache). That second call's own read-modify-write reads
+ * `localStorage` *before* this hook's persist effect (below) has had a
+ * chance to flush the just-added tab into it, so it writes back
+ * `{ tabs: [], ...,  progress: {...} }` — a correct progress update, but
+ * carrying a STALE, pre-tab `tabs`. That write's synthetic `storage` event
+ * reaches this hook's own `useLocalStorage` subscription too (same key), so
+ * `workspace` changes reference — and the old effect, watching exactly that,
+ * interpreted this stale sibling write as "the real hydrated data" and
+ * dispatched `RESTORE` with its empty `tabs`, wiping out the tab that had
+ * just been opened moments earlier.
+ *
+ * Reading `localStorage` directly, once, on mount (`[]` deps) sidesteps this
+ * entirely: nothing about a sibling hook's later write to the same key can
+ * ever cause this effect to run again, because it depends on nothing
+ * reactive at all. It only ever reads the real, synchronous, always-available
+ * `window.localStorage` — a plain browser API — which is exactly as valid a
+ * source of truth immediately post-hydration (when this effect actually
+ * runs) as `useLocalStorage`'s own `getSnapshot` would have been.
  *
  * ## Persistence without clobbering `progress`
  *
@@ -85,26 +113,31 @@ export function useTabs(): readonly [TabsState, TabsActions] {
   // stored, and `emptyWorkspace()` allocates a fresh object every call.
   const fallback = useMemo(() => emptyWorkspace(), []);
 
-  const [workspace, setWorkspace] = useLocalStorage<WorkspaceV1>(STORAGE_KEY, fallback, parseWorkspace);
+  const [, setWorkspace] = useLocalStorage<WorkspaceV1>(STORAGE_KEY, fallback, parseWorkspace);
 
   const [state, dispatch] = useReducer(tabsReducer, INITIAL_TABS_STATE);
 
-  const restoredRef = useRef(false);
   useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
+    // Deliberately NOT `useLocalStorage`'s reactive `workspace` value — see
+    // this hook's own doc comment above ("Why a direct read, not the
+    // reactive `workspace` value") for the real race this sidesteps. `[]`
+    // deps: this runs exactly once per mount, full stop, regardless of any
+    // later write (this hook's own persist effect below, `use-progress.ts`'s
+    // sibling subscription to the same key, or a genuine cross-tab `storage`
+    // event) — none of those can ever cause a second restore.
+    let raw: string | null;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+      raw = null;
+    }
+    if (raw === null) return; // nothing stored — the reducer's own initial state is already correct
+    const parsed = parseWorkspace(raw);
     dispatch({
       type: "RESTORE",
-      state: { tabs: workspace.tabs, activeTabId: workspace.activeTabId },
+      state: { tabs: parsed.tabs, activeTabId: parsed.activeTabId },
     });
-    // `restoredRef` (not the dependency array) is what enforces "exactly
-    // once" here -- `workspace` is listed as a real dependency (satisfying
-    // the lint rule with no suppression needed) precisely because that's
-    // harmless: the ref guard makes every invocation after the first a
-    // no-op, so `workspace` changing later (a cross-tab storage event, or
-    // this same hook's own persist writes) never re-triggers a restore, it
-    // just re-runs the effect body down to the guard and returns.
-  }, [workspace]);
+  }, []);
 
   useEffect(() => {
     if (state === INITIAL_TABS_STATE) return; // pre-hydration render — nothing to persist yet

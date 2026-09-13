@@ -233,12 +233,39 @@ export const RunOutput = forwardRef<RunOutputHandle, RunOutputProps>(function Ru
   // Skips the effect's own first run (mount, with `status` still "idle") --
   // see `RunOutputProps.onStatusChange`'s doc comment for why that call is
   // deliberately withheld. Every run after the first is a genuine transition.
+  //
+  // `lastReportedStatusRef` guards against a second, distinct failure mode:
+  // `onStatusChange` is in this effect's own dependency array (correctly --
+  // a stale closure would report to the wrong place), but a caller that
+  // passes a NEW function identity on every render of ITS OWN (workspace's
+  // `TabPanels`, e.g., builds a fresh inline `(status) => {...}` per tab on
+  // every render, not memoized -- see that file's own map over `tabs`) makes
+  // this effect re-run on every one of the caller's re-renders, independent
+  // of whether `status` itself actually changed. Found the hard way: a real,
+  // reproducible React error #185 ("Maximum update depth exceeded") in
+  // `e2e/workspace/background-run.spec.ts`, which crashed the whole page --
+  // `workspace-shell.tsx`'s own `handleStatusChange` calls `setTabStatuses`
+  // unconditionally (a fresh object every call, even for a repeat of the
+  // same status), which re-renders `WorkspaceShell` -> recreates `TabPanels`'
+  // inline per-tab callbacks -> re-fires every mounted tab's `RunOutput`
+  // effect (this one) -> calls `onStatusChange` again -> `setTabStatuses`
+  // again -> forever. Tracking the last status this effect actually REPORTED
+  // (not merely the last `status` value it saw) and skipping a call when
+  // nothing really changed breaks that cycle at its source, without
+  // requiring every caller to memoize its callback correctly -- the contract
+  // this prop already documents ("invoked whenever `useRecipeRun`'s own
+  // `status` changes") is a statement about `status` transitions, not about
+  // how many times this effect happens to run.
   const hasMountedRef = useRef(false);
+  const lastReportedStatusRef = useRef<RunStatus | null>(null);
   useEffect(() => {
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
+      lastReportedStatusRef.current = status;
       return;
     }
+    if (lastReportedStatusRef.current === status) return;
+    lastReportedStatusRef.current = status;
     onStatusChange?.(status);
   }, [status, onStatusChange]);
 
