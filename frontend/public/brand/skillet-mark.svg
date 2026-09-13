@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The Skillet mark: a frying pan, drawn in the same 24x24, 2px stroke,
+       round cap style as every lucide react icon already used throughout
+       this app, so it reads as part of the same icon language rather than
+       a bolted on logo. Single source of truth, also rasterized into the
+       static favicon and PWA icons (see frontend/scripts/generate-icons.py)
+       so the in-app mark and the browser tab/home screen icon are always
+       the exact same drawing, never two hand maintained copies drifting
+       apart. -->
+  <circle cx="10" cy="14" r="6.5" />
+  <path d="M14.6 9.4 20.5 3.5" />
+  <path d="M7.5 13.5c.6-1 1.7-1.5 2.5-1.5s1.9.5 2.5 1.5" />
+</svg>

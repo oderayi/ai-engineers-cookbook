@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
 
 // Next.js metadata route: served at /manifest.webmanifest.
-// Colors are placeholders, not final branding — see docs/SPEC-app-shell.md
-// Confirmed Decision 6/7 for the warm accent (`oklch(0.58 0.16 40)`, hex
-// approximation `#C2410C`) and the light-neutral default background.
+// The real Skillet brand colors (SPEC-app-shell.md Confirmed Decision 6/7's
+// warm accent, `oklch(0.58 0.16 40)` / hex approximation `#C2410C`, and its
+// light-neutral background) behind the real Skillet mark — see
+// `public/brand/skillet-mark.svg` and `scripts/generate-icons.py`, which
+// generated every icon below from that one source.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Skillet",

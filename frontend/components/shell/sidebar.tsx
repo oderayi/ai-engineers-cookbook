@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 
 import { MobileDrawer } from "./mobile-drawer";
 import { SidebarNav, type NavModel } from "./sidebar-nav";
+import { SkilletLogo } from "./skillet-logo";
 import { ThemeToggle } from "./theme-toggle";
 
 const COLLAPSE_STORAGE_KEY = "skillet.sidebar.collapsed";
@@ -39,6 +40,9 @@ export function Sidebar({ nav, className }: SidebarProps) {
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
+          <div className="mb-2 shrink-0 border-b border-sidebar-border pb-2">
+            <SkilletLogo collapsed={collapsed} />
+          </div>
           <SidebarNav nav={nav} collapsed={collapsed} />
         </div>
         <div
@@ -69,6 +73,9 @@ export function Sidebar({ nav, className }: SidebarProps) {
       <div className="fixed top-3 left-3 z-40 md:hidden">
         <MobileDrawer triggerLabel="Open menu" title="Navigation">
           <div className="flex h-full flex-col">
+            <div className="mb-2 shrink-0 border-b border-sidebar-border pb-2">
+              <SkilletLogo />
+            </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <SidebarNav nav={nav} />
             </div>
