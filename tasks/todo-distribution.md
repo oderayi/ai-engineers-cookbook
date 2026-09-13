@@ -163,19 +163,24 @@ locally.
 committed) Vercel settings for the frontend.
 
 **Acceptance criteria:**
-- [ ] `render.yaml`: backend as a free-tier web service, build via the backend Dockerfile (or `uv sync` — decide per spec's "build: the backend Dockerfile or uv sync"), start via `uvicorn` entrypoint, every env var from the inventory referenced (`sync: false`, not valued) rather than hardcoded
-- [ ] Deploy section of the README (Task 6) documents Vercel dashboard settings: root directory `frontend/`, env vars to set
+- [x] `render.yaml`: backend as a free-tier web service, build via the backend Dockerfile (decided over `uv sync`-based native build — the Dockerfile already exists, is already verified working, and keeps local/hosted using the literal same image, per Confirmed Decision 4), every env var from the inventory referenced (`sync: false`, not valued) rather than hardcoded
+- [ ] Deploy section of the README (Task 6) documents Vercel dashboard settings — deferred to Task 6, not done here
 
-**Verification:**
-- [ ] `render.yaml` validated against Render's documented schema shape (manual cross-check, since an actual Render account/deploy isn't available in this environment — disclosed)
-- [ ] Every env var referenced in `render.yaml` exists in `backend/.env.example`
+**Real gap found and fixed while writing this task (would have broken a real Render deploy silently):** `backend/Dockerfile`'s `CMD` hardcoded `--port 8000`. Render assigns its own dynamic `$PORT` (commonly 10000, not 8000) and expects the container to bind to it — confirmed via Render's own docs, which explicitly call relying on their port auto-detection instead "fragile." Fixed by switching the Dockerfile's `CMD` to shell form so `${PORT:-8000}` actually expands, verified against BOTH a no-`PORT`-set container (defaults to 8000, keeping local Compose unchanged) and a `PORT=10000`-set container (Render's likely real value) — both returned `200`.
 
-**Dependencies:** Task 2 (env var inventory), Task 3 (Dockerfile, if referenced as the build method)
+**Verification — every claim checked against Render's own current docs (fetched live), not memory:**
+- [x] `render.yaml`'s shape (`type`, `runtime: docker`, `dockerfilePath`/`dockerContext` semantics, `sync: false` behavior) cross-checked against Render's Blueprint spec docs directly
+- [x] `dockerfilePath`/`dockerContext` confirmed relative to the repo root (not to each other) — verified via a direct doc fetch rather than assumed
+- [x] Every env var referenced in `render.yaml` exists in `backend/.env.example` (scripted cross-check, all 7 found)
+- [x] An actual Render account/deploy isn't available in this environment — disclosed; everything above is the closest available proxy
+
+**Dependencies:** Task 2 (env var inventory), Task 3 (Dockerfile, referenced as the build method)
 
 **Files likely touched:**
 - `render.yaml` (new)
+- `backend/Dockerfile` (PORT fix)
 
-**Estimated scope:** Small: 1 file
+**Estimated scope:** Small: 1 file (grew to 2 for the PORT fix)
 
 ---
 

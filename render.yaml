@@ -1,0 +1,35 @@
+# Render Blueprint — the hosted backend for the demo deployment (the
+# frontend deploys to Vercel via standard Next.js auto-detection instead,
+# documented in the root README's deploy section, not a committed file --
+# Confirmed Decision 6).
+#
+# `sync: false` env vars are prompted for once, during the Blueprint's
+# initial creation in the Render dashboard (verified against Render's own
+# Blueprint spec docs) -- never valued here, so no secret is ever committed.
+# Names match `backend/.env.example` exactly; see that file for what each
+# one does and whether it's required. Every one of them is OPTIONAL for the
+# app to boot (BYOK-only mode, Confirmed Decision 3) -- leaving a `sync:
+# false` var unset at prompt time is a valid choice, not a broken deploy.
+services:
+  - name: skillet-backend
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /recipes
+    envVars:
+      - key: SKILLET_CORS_ORIGINS
+        sync: false # the deployed Vercel frontend's real origin
+      - key: SKILLET_TRIAL_OPENAI_API_KEY
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: SKILLET_TRIAL_COOKIE_SECRET
+        sync: false
+      - key: SKILLET_TRIAL_DAILY_BUDGET_USD
+        sync: false
+      - key: SKILLET_TRIAL_DAILY_CAP
+        sync: false

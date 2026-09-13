@@ -35,5 +35,13 @@ ENV PATH="/app/.venv/bin:${PATH}"
 # rather than left to that fallback.
 ENV SKILLET_RECIPES_ROOT=/app/recipes
 
+# `EXPOSE` is informational only, kept at the real local-Compose port.
+# Render assigns its own dynamic `$PORT` (commonly 10000, not necessarily
+# 8000) and expects the container to bind to whatever it actually is --
+# relying on Render's own port auto-detection instead is documented as
+# "fragile." Shell form (not the usual JSON exec array) is required here
+# specifically so `${PORT:-8000}` actually expands -- `docker compose`
+# doesn't set `PORT` at all, so the `:-8000` fallback keeps local Compose
+# on the same :8000 every other file in this repo already assumes.
 EXPOSE 8000
-CMD ["uvicorn", "skillet.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn skillet.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
