@@ -13,9 +13,17 @@ test.describe("Browse catalog", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Demo" })).toBeVisible();
-    await expect(page.locator('a[href="/r/echo"]').first()).toBeVisible();
+    // Scoped to `main` (the catalog index's own card grid), not the
+    // sidebar's identical-href copy of the same link: since `workspace`,
+    // `Sidebar` renders before `main` in the DOM, so an unscoped
+    // `a[href="/r/echo"]` would resolve `.first()` to the sidebar's link,
+    // which `workspace`'s own click interception now opens as a tab
+    // instead of navigating (see workspace-shell.tsx's own doc comment).
+    // This test's real intent is the catalog index's own card, so scope to
+    // it explicitly rather than relying on DOM order.
+    await expect(page.locator('main a[href="/r/echo"]').first()).toBeVisible();
 
-    await page.locator('a[href="/r/echo"]').first().click();
+    await page.locator('main a[href="/r/echo"]').first().click();
     await expect(page).toHaveURL(/\/r\/echo$/);
     await expect(page.getByTestId("recipe-view-title")).toHaveText("Echo");
 

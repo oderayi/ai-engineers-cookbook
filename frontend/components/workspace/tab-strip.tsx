@@ -47,12 +47,21 @@ export function TabStrip({
   className,
 }: TabStripProps) {
   return (
-    <div
-      role="tablist"
-      aria-label="Open recipe tabs"
-      className={cn("flex min-w-0 items-center gap-1", className)}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+    <div className={cn("flex min-w-0 items-center gap-1", className)}>
+      {/*
+        `role="tablist"` scoped to ONLY the actual `role="tab"` children
+        (each `TabStripItem`) -- found via a real axe scan while building
+        Task 9's composition: ARIA's `tablist` role requires every child to
+        be `role="tab"` (`aria-required-children`, impact critical), and
+        the "+" button was originally a sibling INSIDE this same
+        `tablist`-rooted div, which is not a `tab` and fails that rule. The
+        "+" control is a real sibling of the tablist now, not a tab itself.
+      */}
+      <div
+        role="tablist"
+        aria-label="Open recipe tabs"
+        className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+      >
         {tabs.map((tab) => (
           <TabStripItem
             key={tab.id}

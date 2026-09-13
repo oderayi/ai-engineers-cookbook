@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Providers } from "@/app/providers";
-import { Shell } from "@/components/shell/shell";
 import { ThemeProvider } from "@/components/shell/theme-provider";
 import { Toaster } from "@/components/primitives/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { listRecipes } from "@/lib/api/recipes";
 import { buildNavModel } from "@/lib/catalog/nav-model";
 import type { NavModel } from "@/components/shell/sidebar-nav";
@@ -81,7 +81,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Providers>
           <ThemeProvider>
             <TooltipProvider>
-              <Shell nav={nav}>{children}</Shell>
+              <WorkspaceShell nav={nav}>{children}</WorkspaceShell>
               <Toaster />
             </TooltipProvider>
           </ThemeProvider>
