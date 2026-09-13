@@ -314,11 +314,11 @@ sandboxed environment can't fully prove (no Docker daemon / GitHub Actions
 runner / Render account available — see plan's Risks section).
 
 **Acceptance criteria:**
-- [ ] A sign-off table (appended to `tasks/plan-distribution.md`) lists all 7 criteria against their verification
-- [ ] Every full-suite command that CAN run locally in this environment does, and passes
+- [x] A sign-off table (appended to `tasks/plan-distribution.md`) lists all 7 criteria against their verification
+- [x] Every full-suite command that CAN run locally in this environment does, and passes
 
 **Verification:**
-- [ ] Full command suite: `make test && make lint && make validate`, plus whatever Docker/CI checks this environment supports
+- [x] Full command suite: `make test && make lint && make validate && make check-redaction && make check-env-docs`, plus real Docker (`docker compose up --build`) and real GitHub Actions CI (`gh run watch`, both jobs green) — this environment turned out to support far more of the "can't verify" list than originally assumed (Docker daemon started successfully; a real git remote with real CI existed all along)
 
 **Dependencies:** Tasks 1-8
 
@@ -330,5 +330,5 @@ runner / Render account available — see plan's Risks section).
 ---
 
 ## Checkpoint: Module complete (after Task 9)
-- [ ] All 7 success criteria individually verified (or honestly disclosed as environment-limited)
-- [ ] `distribution` complete — this is the 8th and final module in the capability map; Skillet v1's full build is done
+- [x] All 7 success criteria individually verified (criterion 6's final human click-through deploy honestly disclosed as the one piece genuinely outside this environment's reach — everything short of that verified)
+- [x] `distribution` complete — this is the 8th and final module in the capability map; Skillet v1's full build is done
