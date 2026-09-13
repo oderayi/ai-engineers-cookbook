@@ -185,8 +185,8 @@ committed) Vercel settings for the frontend.
 ---
 
 ## Checkpoint: CI green (after Tasks 4-5)
-- [ ] CI workflow YAML valid; every step's command verified locally
-- [ ] `render.yaml` shape-validated; env vars cross-checked
+- [x] CI workflow YAML valid; every step's command verified locally
+- [x] `render.yaml` shape-validated; env vars cross-checked
 
 ---
 
@@ -198,14 +198,14 @@ committed) Vercel settings for the frontend.
 consolidated env-var table, "add a recipe" pointer, deploy section.
 
 **Acceptance criteria:**
-- [ ] Quickstart shows both `make dev` and `make docker`
-- [ ] One consolidated env-var table (var, service, required?, default, which module defined it) — the single source of truth the spec requires, linking to both `.env.example` files rather than duplicating their comments verbatim
-- [ ] Architecture overview: one paragraph + the 8-module capability map, linking to `docs/CAPABILITY-MAP.md`
-- [ ] "Add a recipe" section points to `skillet recipes new` / `make new-recipe`, not duplicating `recipe-framework`'s own docs
-- [ ] Deploy section: Render (via `render.yaml`) + Vercel (dashboard settings, no file)
+- [x] Quickstart shows both `make dev` and `make docker`
+- [x] One consolidated env-var table (var, service, required?, default, which module defined it) — the single source of truth the spec requires, linking to both `.env.example` files rather than duplicating their comments verbatim
+- [x] Architecture overview: one paragraph + the 8-module capability map, linking to `docs/CAPABILITY-MAP.md`
+- [x] "Add a recipe" section points to `skillet recipes new` / `make new-recipe`, not duplicating `recipe-framework`'s own docs
+- [x] Deploy section: Render (via `render.yaml`) + Vercel (dashboard settings, no file)
 
 **Verification:**
-- [ ] Every Makefile target and env var named in the README actually exists (manual cross-check against Tasks 1-2)
+- [x] Every Makefile target and env var named in the README actually exists (scripted cross-check: every linked file — `docs/CAPABILITY-MAP.md`, `docs/SPEC-recipe-framework.md`, both `.env.example` files, `render.yaml`, `LICENSE`, `CONTRIBUTING.md` — confirmed present)
 
 **Dependencies:** Tasks 1, 2, 5
 
@@ -223,12 +223,12 @@ command and the parametrized contract test their PR must pass — no
 duplication of that module's own docs.
 
 **Acceptance criteria:**
-- [ ] References `make new-recipe RECIPE=<group>/<slug>`
-- [ ] References the contract test a new recipe must pass (per `recipe-framework`'s spec — named precisely, not vaguely)
-- [ ] References `make test`/`make lint`/`make validate` as the PR-readiness bar
+- [x] References `make new-recipe RECIPE=<group>/<slug>`
+- [x] References the contract check a new recipe must pass — `make validate` (`uv run skillet recipes validate`), NOT `tests/recipe/test_source_mapping.py` (checked both: that test is parametrized over a hardcoded `["echo", "echo-with-helper"]` list, `recipe-framework`'s own internal regression test against its original fixtures — a new contributor's recipe would silently NOT be covered by it unless they also edited that test file. `skillet recipes validate` is the one that dynamically discovers and checks every recipe under `backend/recipes/`, including a brand-new one, with zero extra wiring)
+- [x] References `make test`/`make lint`/`make validate`/`make check-redaction` as the PR-readiness bar
 
 **Verification:**
-- [ ] Every command/test named is real (manual cross-check)
+- [x] Every command/test named is real (manual cross-check; the test-file mixup above was caught by actually reading both candidates' source before naming one)
 
 **Dependencies:** Task 1, `recipe-framework` (already done)
 
@@ -247,32 +247,45 @@ appears, with a non-empty description, in one of the two `.env.example`
 files — wired into CI (Task 4).
 
 **Acceptance criteria:**
-- [ ] `backend/scripts/check_env_docs.py` (matching the existing
+- [x] `backend/scripts/check_env_docs.py` (matching the existing
       `check_trial_key_redaction.py` CI-script precedent): scans the 4 named
       specs for backtick-quoted identifiers matching `SKILLET_*`,
-      `UPSTASH_*`, `NEXT_PUBLIC_*`, or the literal `OPENAI_API_KEY`, and
-      asserts each appears with a non-empty trailing comment in
-      `backend/.env.example` or `frontend/.env.local.example`
-- [ ] Script exits non-zero (with a clear message naming the missing var) on drift; verified via a deliberate negative-control run (temporarily removing a var from the example file) before trusting it — matching this session's established empirical-verification practice
-- [ ] Wired into `ci.yml`'s backend job (or a small standalone job)
+      `UPSTASH_*`, `NEXT_PUBLIC_*`, and asserts each appears with a
+      non-empty preceding description comment in `backend/.env.example` or
+      `frontend/.env.local.example`. `OPENAI_API_KEY`-shaped identifiers are
+      deliberately excluded (see the script's own doc comment): they're
+      per-recipe, dynamically declared vars with no fixed enumerable set,
+      not a global var missing from the example files — flagging one would
+      be a false positive against a real, intentional design choice, not
+      real drift. (Checked the real specs first: as of writing only 3
+      backtick-quoted vars actually appear across all 4 specs —
+      `SKILLET_CORS_ORIGINS`, `SKILLET_TRIAL_DAILY_CAP`,
+      `SKILLET_TRIAL_OPENAI_API_KEY` — the full 8-var inventory came from
+      grepping real source, not from this narrower spec-text scan.)
+- [x] Script exits non-zero (with a clear message naming the missing var) on drift; verified via a deliberate negative-control run (temporarily removing `SKILLET_CORS_ORIGINS`'s documentation, confirming exit 1 naming exactly that var, then restoring the file and diffing it byte-identical to the committed version)
+- [x] Wired into `ci.yml`'s backend job as `make check-env-docs`
+
+**Real, disclosed forward-reference picked up along the way (not originally in this task's scope, found while reading `check_trial_key_redaction.py`'s own doc comment for the Task 8 precedent):** both `execution`'s `check_log_redaction.py` and `trial-limits`' `check_trial_key_redaction.py` explicitly state in their own doc comments that "wiring this into a real CI pipeline is distribution's job" — neither had ever been wired into anything before this. Added a `make check-redaction` target (runs both) and wired it into `ci.yml`'s backend job too, alongside `check-env-docs`.
 
 **Verification:**
-- [ ] `uv run python backend/scripts/check_env_docs.py` passes against the real specs/example files
-- [ ] Negative control: script fails when a real var is removed from an example file
+- [x] `make check-env-docs` (`uv run python backend/scripts/check_env_docs.py`) passes against the real specs/example files
+- [x] Negative control: script fails (exit 1, names the exact missing var) when a real var's documentation is removed from an example file
+- [x] `make check-redaction` (the newly-wired-in forward-reference above) passes against the real repo too
 
 **Dependencies:** Task 2 (env files must exist), Task 4 (CI wiring)
 
 **Files likely touched:**
 - `backend/scripts/check_env_docs.py` (new)
-- `.github/workflows/ci.yml` (add the step)
+- `.github/workflows/ci.yml` (add the steps)
+- `Makefile` (add `check-env-docs`/`check-redaction` targets)
 
-**Estimated scope:** Small: 2 files
+**Estimated scope:** Small: 2 files (grew to 3 for the redaction-script forward-reference)
 
 ---
 
 ## Checkpoint: Docs complete (after Tasks 6-8)
-- [ ] Completeness script passes against real specs/example files (plus a proven negative control)
-- [ ] README/CONTRIBUTING cross-checked against real Makefile targets and env vars
+- [x] Completeness script passes against real specs/example files (plus a proven negative control)
+- [x] README/CONTRIBUTING cross-checked against real Makefile targets and env vars
 
 ---
 

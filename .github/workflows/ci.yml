@@ -7,11 +7,15 @@
 # resolve against, so there is nothing extra to pin here.
 #
 # Two jobs, split by toolchain, each installing only what it needs:
-#   backend:  make test-backend, make lint-backend, make validate
-#             (`uv run pytest` already runs every backend test, including
-#             recipe-framework's own 1-to-1 source-hash test
-#             (tests/recipe/test_source*.py) -- no separate invocation
-#             needed for that cross-cutting check)
+#   backend:  make test-backend, make lint-backend, make validate,
+#             make check-redaction (`uv run pytest` already runs every
+#             backend test, including recipe-framework's own 1-to-1
+#             source-hash test (tests/recipe/test_source*.py) -- no
+#             separate invocation needed for that cross-cutting check;
+#             check-redaction wraps execution's check_log_redaction.py and
+#             trial-limits' check_trial_key_redaction.py, both of which
+#             explicitly flag "wiring this into a real CI pipeline is
+#             distribution's job" in their own doc comments)
 #   frontend: make test-frontend, make lint-frontend, plus `bun run
 #             typecheck` (not in the spec's own Commands table, which lists
 #             no typecheck target at all -- added here as a disclosed
@@ -38,6 +42,8 @@ jobs:
       - run: make test-backend
       - run: make lint-backend
       - run: make validate
+      - run: make check-redaction
+      - run: make check-env-docs
 
   frontend:
     runs-on: ubuntu-latest

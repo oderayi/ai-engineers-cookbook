@@ -9,7 +9,7 @@
 # real terminal per the product intent's audience assumption.
 
 .PHONY: dev dev-backend dev-frontend docker test test-backend test-frontend \
-	validate new-recipe lint lint-backend lint-frontend
+	validate new-recipe lint lint-backend lint-frontend check-redaction check-env-docs
 
 dev:
 	@cd backend && uv sync --quiet
@@ -65,3 +65,18 @@ lint-backend:
 
 lint-frontend:
 	@cd frontend && bun run lint
+
+# Both scripts' own doc comments explicitly flag wiring them into a real CI
+# pipeline as this module's job (execution's check_log_redaction.py and
+# trial_limits' check_trial_key_redaction.py) -- each runs the whole backend
+# test suite as a real subprocess with a sentinel secret injected, then
+# fails if that sentinel ever appears in captured stdout/stderr (a
+# release-blocking leak, not just an in-process caplog assertion).
+check-redaction:
+	@cd backend && uv run python scripts/check_log_redaction.py
+	@cd backend && uv run python scripts/check_trial_key_redaction.py
+
+# Catches drift when a future module spec adds an env var and forgets to
+# document it in either .env.example file.
+check-env-docs:
+	@cd backend && uv run python scripts/check_env_docs.py
