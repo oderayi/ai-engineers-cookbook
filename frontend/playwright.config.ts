@@ -23,7 +23,7 @@ export default defineConfig({
   // discovered the hard way during Task 6 of this same module.
   webServer: [
     {
-      command: "cd ../backend && uv run --with 'uvicorn[standard]' python scripts/e2e_recipes_server.py",
+      command: "cd ../backend && uv run python scripts/e2e_recipes_server.py",
       url: "http://localhost:8000/recipes",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
