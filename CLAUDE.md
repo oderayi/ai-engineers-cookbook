@@ -1,1 +1,1 @@
-For deep context on feature requirements, read docs/REQUIREMENTS.md.
+For deep context on feature requirements, read docs/intent/REQUIREMENTS.md.
