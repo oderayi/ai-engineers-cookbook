@@ -45,7 +45,7 @@ Then we build the backend.
 - Test-driven-development is CRUCIAL. Generated codes in large amount are hard to review.
 - Parallelize heavily - use multiple agents where tasks can be safely paralellized.
 - Agent: Use sub-agents for faster delivery where necessary.
-- AI attribution: Never add Co-authored by ***model***. I will personally add the attribution where it should be.
+- AI attribution: Never add Co-authored by ***model*** to git commit messages. I will personally add the attribution where it should be.
 
 ## Questions I have
 - Should I build this with Rust or Next.js/Python?
