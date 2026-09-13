@@ -277,12 +277,16 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** The two scenarios only a real browser convincingly proves.
 
 **Acceptance criteria:**
-- [ ] `tab-lifecycle.spec.ts`: open two tabs (including a duplicate recipe), switch between them, close one, reload the page — asserts the same tabs/order/active tab are restored, and no tab attempts to resume a run
-- [ ] `background-run.spec.ts`: start a real run in tab A (against `execution`'s real E2E backend, reusing the existing dual-webServer infra), switch to tab B, wait, switch back to A — assert A's output continued streaming/reached its terminal state while inactive, and that A's tab dot reflected the transition while B was active
+- [x] `tab-lifecycle.spec.ts`: open two tabs (including a duplicate recipe), switch between them, close one, reload the page — asserts the same tabs/order/active tab are restored, and no tab attempts to resume a run
+- [x] `background-run.spec.ts`: start a real run in tab A (against `execution`'s real E2E backend, reusing the existing dual-webServer infra), switch to tab B, wait, switch back to A — assert A's output continued streaming/reached its terminal state while inactive, and that A's tab dot reflected the transition while B was active
 
 **Verification:**
-- [ ] `cd frontend && bun run test:e2e` — both new specs pass, stable across 3 consecutive runs
-- [ ] Full E2E suite green (no regressions)
+- [x] `cd frontend && bun run test:e2e` — both new specs pass, stable across 3 consecutive runs
+- [x] Full E2E suite green (no regressions)
+
+**Real bugs found and fixed while writing these specs (neither jsdom-based unit tests could catch either — see the commit for full root-cause writeups):**
+1. `use-tabs.ts` — a real browser `page.reload()` never restored tabs: `useLocalStorage`'s `getServerSnapshot` returns the same `fallback` reference for both the server render and the client's first hydration-matching render, and the old restore effect's "fire once" ref captured that stale fallback permanently. Fixed by reading `localStorage` directly in a mount-only (`[]`) effect instead of reacting to the `useSyncExternalStore`-backed `workspace` value at all — which also happened to close a second, worse race (a sibling hook's stale read-modify-write on the same storage key could otherwise be mistaken for "the real hydrated data" and wipe out a just-opened tab).
+2. `run-output.tsx` — React error #185 (Maximum update depth exceeded), an infinite render loop that crashed the whole page in `background-run.spec.ts`. `TabPanels`' unmemoized per-tab `onStatusChange` closure changed identity every render, re-firing `RunOutput`'s effect regardless of whether `status` had actually changed, feeding back into `workspace-shell.tsx`'s unconditional `setTabStatuses` call. Fixed by tracking the last status the effect actually reported and skipping a call when nothing changed.
 
 **Dependencies:** Task 9
 
@@ -295,8 +299,8 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Integration complete (after Tasks 9-10)
-- [ ] `bun run build` succeeds; E2E stable across 3 consecutive runs
-- [ ] Per the standing "just proceed" instruction, proceeding directly to Phase 6
+- [x] `bun run build` succeeds; E2E stable across 3 consecutive runs
+- [x] Per the standing "just proceed" instruction, proceeding directly to Phase 6
 
 ---
 
@@ -307,11 +311,11 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 **Description:** Map each of `SPEC-workspace.md`'s 8 numbered Success Criteria to the test(s) that verify it, matching the precedent from every prior module.
 
 **Acceptance criteria:**
-- [ ] A sign-off table (appended to `tasks/plan-workspace.md`) lists all 8 criteria against their verification, honestly noting any partial/carried-forward criterion
-- [ ] `cd frontend && bun run {build,lint,typecheck,test,test:e2e}` all green
+- [x] A sign-off table (appended to `tasks/plan-workspace.md`) lists all 8 criteria against their verification, honestly noting any partial/carried-forward criterion
+- [x] `cd frontend && bun run {build,lint,typecheck,test,test:e2e}` all green
 
 **Verification:**
-- [ ] Full command suite above, run once at the end
+- [x] Full command suite above, run once at the end
 
 **Dependencies:** Tasks 1-10
 
@@ -323,6 +327,6 @@ Plan: [tasks/plan-workspace.md](plan-workspace.md). Spec: [docs/SPEC-workspace.m
 ---
 
 ## Checkpoint: Module complete (after Task 11)
-- [ ] All 8 success criteria individually verified
-- [ ] Full suite + lint + typecheck + build + E2E green
-- [ ] Per the standing "just proceed" instruction, `workspace` is complete; `distribution` may now begin consuming it (alongside `trial-limits`), per the approved build order
+- [x] All 8 success criteria individually verified
+- [x] Full suite + lint + typecheck + build + E2E green
+- [x] Per the standing "just proceed" instruction, `workspace` is complete; `distribution` may now begin consuming it (alongside `trial-limits`), per the approved build order
