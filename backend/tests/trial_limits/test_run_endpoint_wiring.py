@@ -93,6 +93,26 @@ def test_byok_request_bypasses_the_gate_entirely(tmp_path: Path, monkeypatch) ->
     assert "sk_aid" not in (resp.headers.get("set-cookie") or "")
 
 
+def test_missing_required_key_with_no_trial_key_configured_returns_a_real_http_422(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SPEC-distribution.md's own Success Criterion 4, exercised at the
+    real HTTP level (not just gate_trial_run in isolation, per
+    test_gate.py's own version of this): a real `422` response, before
+    the SSE stream ever starts (unlike a mid-stream `error` event), and
+    the request never reaches Redis at all -- `FailingRedis`-equivalent
+    behavior is implied by never even calling any method on the double.
+    """
+    monkeypatch.delenv("SKILLET_TRIAL_OPENAI_API_KEY", raising=False)
+    root = make_recipe_requiring_key(tmp_path)
+    client = make_gated_client(root)
+
+    resp = client.post("/recipes/x/run", data={"params": "{}", "config": "{}"})
+
+    assert resp.status_code == 422
+    assert "OPENAI_API_KEY" in resp.text
+
+
 def test_granted_keyless_trial_run_uses_the_authors_key_and_sets_a_cookie(
     tmp_path: Path, monkeypatch
 ) -> None:

@@ -119,14 +119,39 @@ async def test_no_required_keys_declared_is_pure_byok_no_redis(monkeypatch):
     assert decision.config == {}
 
 
-async def test_no_trial_key_configured_is_a_noop_no_redis_no_cookie(monkeypatch):
+async def test_no_required_keys_missing_is_a_noop_even_with_no_trial_key_configured(monkeypatch):
+    """The genuine BYOK-success case, distinct from the 422 case below:
+    nothing is missing at all, so there is nothing to gate or reject,
+    regardless of whether a trial key happens to be configured.
+    """
     monkeypatch.delenv("SKILLET_TRIAL_OPENAI_API_KEY", raising=False)
     request = make_request(trial_redis=FailingRedis(), cookie_secret=SECRET)
     response = Response()
 
-    decision = await gate_trial_run(ENV_ONE_REQUIRED, {}, request, response)
+    decision = await gate_trial_run(ENV_ONE_OPTIONAL, {}, request, response)
 
     assert decision.config == {}
+    assert "set-cookie" not in response.headers
+
+
+async def test_missing_required_key_with_no_trial_key_configured_denies_with_422(monkeypatch):
+    """SPEC-distribution.md's own Success Criterion 4: with no trial key
+    funded, a request missing a required key fails 422 (the learner needs
+    to supply their own key) -- never a 429 (there's no trial to deny).
+    Found via distribution's own sign-off pass: this used to silently
+    pass the request through with the key simply left missing, no Redis
+    call and no error either -- fixed here, once distribution's own
+    Success Criterion 4 exercised the scenario end-to-end and caught it.
+    """
+    monkeypatch.delenv("SKILLET_TRIAL_OPENAI_API_KEY", raising=False)
+    request = make_request(trial_redis=FailingRedis(), cookie_secret=SECRET)
+    response = Response()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await gate_trial_run(ENV_ONE_REQUIRED, {}, request, response)
+
+    assert exc_info.value.status_code == 422
+    assert "OPENAI_API_KEY" in str(exc_info.value.detail)
     assert "set-cookie" not in response.headers
 
 

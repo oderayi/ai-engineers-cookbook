@@ -289,6 +289,21 @@ files — wired into CI (Task 4).
 
 ---
 
+## Real CI feedback, post-push (superseding the "no GitHub Actions runner available" disclosure above)
+
+This repo has a real GitHub remote (`origin`) the user pushes to independently — CI genuinely ran on GitHub after the Task 4/5 push and reported two real failures back, both fixed here and re-verified locally before pushing again:
+
+1. **`astral-sh/setup-uv@v10` doesn't resolve.** My own live doc-fetch verification (Task 4) checked the README's example and a tags listing, but the tags listing showed no bare-major floating tag at all for this action — only exact versions (`v10.1.0`, `v10.0.1`, ...). Fixed by pinning the exact tag `astral-sh/setup-uv@v10.1.0`, confirmed present in the real tag list this time (not just a README example).
+2. **Frontend `bun run typecheck` failed in CI**: `Cannot find name 'LayoutProps'`/`'PageProps'`. These are Next.js's own auto-generated ambient types (`.next/types/`), created by `next build`/`next dev`/`next typegen` — my own local verification of this exact command had ALWAYS run inside a working directory that already had a `.next/` from earlier `bun run build` calls during Docker testing, so it passed locally by accident and never actually exercised what a truly clean checkout hits. Reproduced locally by deleting `.next/` and re-running `bun run typecheck` — same two errors. This isn't CI-specific: any contributor's first `bun run typecheck` on a fresh clone would hit it too. Fixed at the source — `frontend/package.json`'s own `typecheck` script now runs `next typegen &&` first — rather than papering over it with an extra CI-only step, so the fix benefits every caller, not just CI.
+
+Both fixes re-verified against a genuinely clean local state (`.next/` and `node_modules` cache removed, `bun install --frozen-lockfile`, then the exact CI sequence) before committing, plus the full `make test`/`lint`/`validate`/`check-redaction`/`check-env-docs` suite (267 backend + 655 frontend tests, up from 265 — see the third finding below).
+
+3. **A real, previously-undetected gap in `trial_limits`' own gate, found while trying to write a genuine live proof of Success Criterion 4** ("every run request either succeeds or fails with 422 — never 429" with no trial key configured): a manual empirical test (real multipart form request, no `SKILLET_TRIAL_*` set, a recipe declaring a required key) returned `200` with the key silently `null` — not a 422, not any error at all. Tracing it down: `gate_trial_run`'s own inline comment claimed "execution's own Params validation raises the ordinary 422 downstream," but no such validation exists anywhere in `execution`'s actual request-parsing code (confirmed by reading it) — `ctx.config` is a plain dict, never re-checked against the manifest's `required` flags after `gate_trial_run` returns. `trial_limits`' own `test_gate.py` had a test (`test_no_trial_key_configured_is_a_noop_no_redis_no_cookie`) explicitly asserting this exact silent-pass-through as correct — this was a deliberate, signed-off (if unintentionally incomplete) design, not an oversight nobody noticed until distribution's own Success Criterion 4 was the first thing to ever exercise this scenario end-to-end.
+
+   Fixed with a minimal, targeted addition to `gate_trial_run` itself (the one place that already computes `missing_required`): raises a real `HTTPException(422, ...)` when required keys are missing and no trial key is configured at all, distinct from the pure-BYOK-success pass-through. Updated the outdated test to assert the new (correct) behavior instead, renamed it, and added a dedicated real-HTTP-level test in `test_run_endpoint_wiring.py` (a genuine `client.post(...)` returning `422`, not just the isolated `gate_trial_run` unit test) — this is the closest a test gets to Success Criterion 4's own literal wording. Full `trial_limits` suite re-verified (99 tests) plus the full backend suite (267, up from 265).
+
+---
+
 ## Phase 5: Sign-off
 
 ### Task 9: Success-criteria sign-off pass

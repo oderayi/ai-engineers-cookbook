@@ -130,12 +130,35 @@ async def gate_trial_run(
     """
     missing_required = _missing_required_keys(env, parsed_config)
 
-    if not missing_required or not author_key.any_trial_key_configured():
-        # Pure BYOK, or a local/self-hosted deployment with no trial key
-        # funded (Confirmed Decision 11): pass through unchanged. If a
-        # required key is still missing in the latter case, execution's own
-        # Params validation raises the ordinary 422 downstream — there's no
-        # trial to gate when none is configured.
+    if missing_required and not author_key.any_trial_key_configured():
+        # A local/self-hosted deployment with no trial key funded
+        # (Confirmed Decision 11) has nothing to gate -- but the request
+        # still can't proceed silently missing a key the recipe declared
+        # required. SPEC-distribution.md's own Success Criterion 4: this
+        # is an ordinary 422 (the learner needs to supply their own key),
+        # never a 429 (there's no trial to deny).
+        #
+        # This branch didn't exist until distribution's own sign-off pass
+        # actually exercised the scenario end-to-end and found a silent
+        # pass-through instead — the comment this replaced claimed
+        # "execution's own Params validation raises the ordinary 422
+        # downstream," but no such validation actually exists anywhere in
+        # execution's request-parsing or Params-binding code (confirmed by
+        # reading it): `ctx.config` is a plain dict, never re-validated
+        # against the manifest's `required` flags after this point. Fixing
+        # it here, in the one place that already computes
+        # `missing_required`, is more minimal than inventing a second,
+        # duplicate check in `execution` for the same fact this module
+        # already knows.
+        raise HTTPException(
+            status_code=422,
+            detail=f"missing required config key(s): {[e.key for e in missing_required]}",
+        )
+
+    if not missing_required:
+        # Pure BYOK: nothing missing, regardless of whether a trial key
+        # happens to be configured -- never touches Redis or issues a
+        # cookie.
         return TrialDecision(config=dict(parsed_config))
 
     redis: UpstashRedis | None = getattr(request.app.state, "trial_redis", None)
